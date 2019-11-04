@@ -1,0 +1,29 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.2.2
+Date: 18. 01. 2019
+  Modding:
+    - Added script interface for get-money and add-money
+
+---------------------------------------------------------------------------------------------------
+Version: 0.2.1
+Date: 15. 01. 2019
+  Bugfixes:
+    - on_robot_built_entity
+  
+---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+Date: 14. 01. 2019
+  Features:
+    - Added Electric Transfer Station
+    - Credits are logged in production statistics
+  Changes:
+    - Land claims cost money
+    - Hidden Buy/Sell box inventory
+  Bugfixes:
+    - Specializations are fixed (was broken in v0.1.0)
+
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: 12. 01. 2019
+  Features:
+    - Released

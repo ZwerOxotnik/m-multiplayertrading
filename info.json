@@ -6,5 +6,5 @@
     "author": "Luke Perkin",
     "contact": "lukeperkin@gmail.com",
     "homepage": "",
-    "description": ""
+    "dependencies": ["base"]
   }

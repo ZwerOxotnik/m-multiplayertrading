@@ -18,7 +18,7 @@ function UpdateElectricTradingStations(stations)
             }
             local highest_bidder = nil
             local highest_bid = 0
-            for _, dest in ipairs(adjacent) do
+            for _, dest in pairs(adjacent) do
                 local dest_bid = global.electric_trading_stations[dest.unit_number].buy_bid
                 local dest_full = (dest.energy >= 6000000)
                 if dest.force ~= source.force and dest_bid > highest_bid and not dest_full then
@@ -70,7 +70,7 @@ function BalanceEnergy(source, destination)
     if (source_cost > 0 and not CanTransferCredits(source, source_cost)) then
         local signal = {type="item", name="accumulator"}
         local message = "Cannot afford to buy power. " .. math.floor(source_cost) .. " short."
-        for _, player in ipairs(source.force.players) do
+        for _, player in pairs(source.force.players) do
             player.add_custom_alert(source, signal, message, true)
         end
         return
@@ -79,7 +79,7 @@ function BalanceEnergy(source, destination)
     if (dest_cost > 0 and not CanTransferCredits(destination, dest_cost)) then
         local signal = {type="item", name="accumulator"}
         local message = "Cannot afford to buy power. " .. math.floor(dest_cost) .. " short."
-        for _, player in ipairs(destination.force.players) do
+        for _, player in pairs(destination.force.players) do
             player.add_custom_alert(destination, signal, message, true)
         end
         return

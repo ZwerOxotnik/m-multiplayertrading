@@ -1,5 +1,5 @@
 function UpdateSpecializations(specializations, SPEC_DATA)
-    for _, player in pairs(game.players) do
+    for _, player in pairs(game.players) do -- TODO: change to game.connected_players (don't forget about other events)
         if player.gui.left['specialization-gui'] then
             player.gui.left['specialization-gui'].destroy()
             player.gui.left['specialization-gui'] = nil
@@ -8,7 +8,7 @@ function UpdateSpecializations(specializations, SPEC_DATA)
     end
 
     for force_name, force in pairs(game.forces) do
-        for _, spec in ipairs(SPEC_DATA) do
+        for _, spec in pairs(SPEC_DATA) do
             if specializations[spec.name] == nil then
                 local current_sum = GetCurrentStatSumForSpecialization(spec, force)
                 local last_stat = GetLastStatForSpecialization(spec, force)
@@ -40,7 +40,7 @@ function SpecializationGUI( event )
     else
         local frame = player.gui.left.add{type = "frame", name = "specialization-gui", caption = "Specializations"}
         local flow = frame.add{type = "flow", direction = "vertical"}
-        for _, spec in ipairs(SPECIALIZATIONS) do
+        for _, spec in pairs(SPECIALIZATIONS) do
             local row = flow.add{type = "flow", direction = "horizontal"}
             local force_name = global.specializations[spec.name]
             

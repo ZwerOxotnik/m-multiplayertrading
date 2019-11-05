@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.0
+Date: 05. 11. 2019
+  Bugfixes:
+    - Fixed some bugs related to desynchronization
+  Notes:
+    - This update for Factorio 0.17 and updated by ZwerOxotnik
+    - I need more tests and refactoring
+
+---------------------------------------------------------------------------------------------------
 Version: 0.2.2
 Date: 18. 01. 2019
   Modding:

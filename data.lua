@@ -74,7 +74,7 @@ data:extend{
     {
         type = "custom-input",
         name = "specialization-gui",
-        key_sequence = "j",
+        key_sequence = "J",
     },
     {
         type = "custom-input",

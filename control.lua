@@ -42,19 +42,19 @@ POLES = {
 }
 
 function Init()
-    global.sell_boxes = {}
-    global.orders = {}
-    global.credits = {}
-    global.credit_mints = {}
-    global.specializations = {}
-    global.output_stat = {}
-    global.early_bird_tech = {}
-    global.open_order = {}
-    global.electric_trading_stations = {}
+    global.sell_boxes = global.sell_boxes or {}
+    global.orders = global.orders or {}
+    global.credits = global.credits or {}
+    global.credit_mints = global.credit_mints or {}
+    global.specializations = global.specializations or {}
+    global.output_stat = global.output_stat or {}
+    global.early_bird_tech = global.early_bird_tech or {}
+    global.open_order = global.open_order or {}
+    global.electric_trading_stations =  global.electric_trading_stations or {}
     for _, force in pairs(game.forces) do
         ForceCreated({force=force})
     end
-    for player_index, player in ipairs(game.players) do
+    for player_index, player in pairs(game.players) do
         PlayerCreated({player_index=player_index})
     end
 end
@@ -140,7 +140,7 @@ function ResearchCompleted(event)
 end
 
 function PrintAll(text)
-    for i, player in pairs(game.players) do
+    for _, player in pairs(game.players) do
         player.print(text)
     end
 end
@@ -203,7 +203,7 @@ function HandleEntityDied(event)
 end
 
 function OnTick(event)
-    for i, player in pairs(game.players) do
+    for _, player in pairs(game.connected_players) do
         player.gui.top['credits'].caption = "Credits: " .. math.floor(global.credits[player.force.name])
     end
     for i=#global.sell_boxes, 1, -1 do
@@ -211,7 +211,7 @@ function OnTick(event)
             table.remove( global.sell_boxes, i )
         end
     end
-    for i, sell_box in ipairs(global.sell_boxes) do
+    for i, sell_box in pairs(global.sell_boxes) do
         local sell_order = global.orders[sell_box.unit_number]
         if sell_order and sell_order.name and sell_box.get_item_count(sell_order.name) > 0 then
             buy_boxes = sell_box.surface.find_entities_filtered{
@@ -220,14 +220,14 @@ function OnTick(event)
             }
             local item_count = sell_box.get_item_count(sell_order.name)
             local valid_buy_boxes = {}
-            for i, buy_box in ipairs(buy_boxes) do
+            for _, buy_box in pairs(buy_boxes) do
                 local buy_order = global.orders[buy_box.unit_number]
                 if buy_box.force ~= sell_box.force and buy_order and buy_order.name == sell_order.name and buy_order.value >= sell_order.value then
                     table.insert(valid_buy_boxes, buy_box)
                 end
             end
             if #valid_buy_boxes > 0 then
-                for i, buy_box in ipairs(valid_buy_boxes) do
+                for _, buy_box in pairs(valid_buy_boxes) do
                     local buy_order = global.orders[buy_box.unit_number]
                     local result = Transaction(sell_box, buy_box, buy_order, 1)
                 end
@@ -240,7 +240,7 @@ function OnTick(event)
         end
     end
     local minting_speed = settings.global['credit-mint-speed'].value
-    for i, credit_mint in ipairs(global.credit_mints) do
+    for i, credit_mint in pairs(global.credit_mints) do
         local energy = credit_mint.entity.energy / credit_mint.entity.electric_buffer_size
         credit_mint.progress = credit_mint.progress + (energy * minting_speed)
         if credit_mint.progress >= 1 then

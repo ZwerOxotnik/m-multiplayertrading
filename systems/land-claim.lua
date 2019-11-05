@@ -1,5 +1,5 @@
 function GetClaimedLand(entity)
-    for i, poleName in ipairs(POLES) do
+    for _, poleName in pairs(POLES) do
         local prototype = game.entity_prototypes[poleName]
         local radius = prototype.supply_area_distance
         if entity.type == "electric-pole" then
@@ -9,7 +9,7 @@ function GetClaimedLand(entity)
             area = Area(entity.position, radius),
             name = poleName
         }
-        for _, pole in ipairs(claimPoles) do
+        for _, pole in pairs(claimPoles) do
             if pole.force ~= entity.force then
                 return pole.force
             end

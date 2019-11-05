@@ -51,7 +51,7 @@ local electricTradingStation = {
     {
         type = "electric",
         buffer_capacity = "6MJ",
-        usage_priority = "terciary",
+        usage_priority = "tertiary",
         input_flow_limit = "6MW",
         output_flow_limit = "6MW"
     },
@@ -115,7 +115,6 @@ data:extend{
         place_result = "credit-mint", 
         subgroup = "extraction-machine",
         stack_size = 1,
-        flags = { "goes-to-quickbar" },
         icon = "__base__/graphics/icons/coin.png",
         icon_size = 32
     },
@@ -125,7 +124,6 @@ data:extend{
         place_result = "electric-trading-station", 
         subgroup = "energy-pipe-distribution",
         stack_size = 100,
-        flags = { "goes-to-quickbar" },
         icon = "__base__/graphics/icons/substation.png",
         icon_size = 32
     }

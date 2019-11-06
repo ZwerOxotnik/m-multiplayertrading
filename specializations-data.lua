@@ -1,4 +1,4 @@
-SPECIALIZATIONS = {
+return {
     {
         name = "iron-gear-wheel-specialization",
         requirement = {

@@ -1,4 +1,4 @@
-require "specializations-data"
+SPECIALIZATIONS = require "specializations-data"
 
 local function copy(thing)
     if type(thing) == 'table' then

@@ -1,14 +1,16 @@
-function UpdateSpecializations(specializations, SPEC_DATA)
+local SPECIALIZATIONS = require("specializations-data")
+
+function UpdateSpecializations(SPEC_DATA)
+    local specializations = global.specializations
     for _, player in pairs(game.players) do -- TODO: change to game.connected_players (don't forget about other events)
         if player.gui.left['specialization-gui'] then
             player.gui.left['specialization-gui'].destroy()
-            player.gui.left['specialization-gui'] = nil
             SpecializationGUI({player_index = player.index})
         end
     end
 
     for force_name, force in pairs(game.forces) do
-        for _, spec in pairs(SPEC_DATA) do
+        for _, spec in pairs(SPECIALIZATIONS) do
             if specializations[spec.name] == nil then
                 local current_sum = GetCurrentStatSumForSpecialization(spec, force)
                 local last_stat = GetLastStatForSpecialization(spec, force)

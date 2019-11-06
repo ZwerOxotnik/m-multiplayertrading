@@ -2,7 +2,6 @@
     Multiplayer Trading by Luke Perkin.
     Some concepts taken from Teamwork mod (credit to DragoNFly1) and Diplomacy mod (credit to ZwerOxotnik).
 ]]
-require "specializations-data"
 require "systems/land-claim"
 require "systems/specializations"
 require "systems/electric-trading-station"
@@ -94,7 +93,7 @@ function AddCreditsGUI(player)
         player.gui.left['credits'].destroy()
     end
     if not player.gui.top['credits'] then
-        player.gui.top.add{type = "label", name = "credits", caption = "Credits", style = "caption_label"}
+        player.gui.top.add{type = "label", name = "credits", caption = {"multiplayertrading.gui.credits"}, style = "caption_label"}
     end
 end
 
@@ -204,7 +203,7 @@ end
 
 function OnTick(event)
     for _, player in pairs(game.connected_players) do
-        player.gui.top['credits'].caption = "Credits: " .. math.floor(global.credits[player.force.name])
+        player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, math.floor(global.credits[player.force.name])}
     end
     for i=#global.sell_boxes, 1, -1 do
         if not global.sell_boxes[i].valid then
@@ -247,17 +246,6 @@ function OnTick(event)
             credit_mint.progress = 0
             AddCredits(credit_mint.entity.force, 1)
         end
-    end
-    if event.tick % 60 == 0 then
-        for unit_number, electric_trading_station in pairs(global.electric_trading_stations) do
-            if not electric_trading_station.entity.valid then
-                global.electric_trading_stations[unit_number] = nil
-            end
-        end
-        UpdateElectricTradingStations(global.electric_trading_stations)
-    end
-    if settings.startup['specializations'].value and event.tick % (60*60) == 0 then
-        UpdateSpecializations(global.specializations, SPECIALIZATIONS)
     end
 end
 
@@ -540,3 +528,16 @@ remote.add_interface("multiplayer-trading", {
         return global.credits[force.name]
     end
 })
+
+script.on_nth_tick(60, function(event)
+    for unit_number, electric_trading_station in pairs(global.electric_trading_stations) do
+        if not electric_trading_station.entity.valid then
+            global.electric_trading_stations[unit_number] = nil
+        end
+    end
+    UpdateElectricTradingStations(global.electric_trading_stations)
+end)
+
+if settings.startup['specializations'].value == true then
+    script.on_nth_tick(3600, UpdateSpecializations)
+end

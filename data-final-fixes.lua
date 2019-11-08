@@ -14,8 +14,10 @@ if settings.startup['land-claim'].value then
     local poles = {"small-electric-pole", "medium-electric-pole", "big-electric-pole", "substation"}
     for i, pole_name in ipairs(poles) do
         local prototype = data.raw['electric-pole'][pole_name]
-        prototype.supply_area_distance = prototype.supply_area_distance * 2
-        prototype.maximum_wire_distance = prototype.maximum_wire_distance * 2
+        if prototype then
+            prototype.supply_area_distance = prototype.supply_area_distance * 2
+            prototype.maximum_wire_distance = prototype.maximum_wire_distance * 2
+        end
     end
 end
 

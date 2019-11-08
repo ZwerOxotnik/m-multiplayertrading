@@ -14,21 +14,21 @@ end
 
 local buyBox = copy(data.raw.container['steel-chest'])
 buyBox.name = "buy-box"
-buyBox.icon = "__multiplayertrading__/graphics/icons/buy-box.png"
-buyBox.picture.filename = "__multiplayertrading__/graphics/entity/buy-box.png"
+buyBox.icon = "__m-multiplayertrading__/graphics/icons/buy-box.png"
+buyBox.picture.filename = "__m-multiplayertrading__/graphics/entity/buy-box.png"
 buyBox.inventory_size = 1
 local buyBoxItem = copy(data.raw.item['steel-chest'])
 buyBoxItem.name = "buy-box"
-buyBoxItem.icon = "__multiplayertrading__/graphics/icons/buy-box.png"
+buyBoxItem.icon = "__m-multiplayertrading__/graphics/icons/buy-box.png"
 buyBoxItem.place_result = "buy-box"
 local sellBox = copy(data.raw.container['steel-chest'])
 sellBox.name = "sell-box"
-sellBox.icon = "__multiplayertrading__/graphics/icons/sell-box.png"
-sellBox.picture.filename = "__multiplayertrading__/graphics/entity/sell-box.png"
+sellBox.icon = "__m-multiplayertrading__/graphics/icons/sell-box.png"
+sellBox.picture.filename = "__m-multiplayertrading__/graphics/entity/sell-box.png"
 sellBox.inventory_size = 1
 local sellBoxItem = copy(data.raw.item['steel-chest'])
 sellBoxItem.name = "sell-box"
-sellBoxItem.icon = "__multiplayertrading__/graphics/icons/sell-box.png"
+sellBoxItem.icon = "__m-multiplayertrading__/graphics/icons/sell-box.png"
 sellBoxItem.place_result = "sell-box"
 
 local creditMint = copy(data.raw.radar['radar'])

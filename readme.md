@@ -13,7 +13,6 @@
     * [Specializations](#specializations)
     * [Early Bird Technology](#early-bird-technology)
 * [Terms of use](#terms-of-use)
-* [License](#license)
 * [Credit](#credit)
 * [Disclaimer](#disclaimer)
 
@@ -70,11 +69,9 @@ This only applies to leafs in the technology tree. That is tech that is not list
 
 # <a name="terms-of-use"></a> Terms of use
 
-This work is licensed under a [Creative Commons Attribution 4.0 Unported license](https://creativecommons.org/licenses/by/4.0/). It is attributed to Luke Perkin and ZwerOxotnik, and the original version can be found [here](https://mods.factorio.com/mod/multiplayertrading).
-
-# License
-
 [![Creative Commons License](https://licensebuttons.net/l/by/4.0/88x31.png)](https://creativecommons.org/licenses/by/4.0/)
+
+This work is a derivative of "Multiplayer Trading" by Luke Perkin, used under [Creative Commons Attribution 4.0 Unported license](https://creativecommons.org/licenses/by/4.0/). This work is attributed to Luke Perkin and ZwerOxotnik, and the original version can be found [here](https://mods.factorio.com/mod/multiplayertrading).
 
 This work is licensed under a [Creative Commons Attribution 4.0 International License](/LICENSE).
 

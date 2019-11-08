@@ -1,5 +1,5 @@
 
-![thumbnail](https://github.com/ZwerOxotnik/multiplayertrading/blob/0.17/thumbnail.png?raw=true)
+![thumbnail](/thumbnail.png?raw=true)
 
 # Contents
 

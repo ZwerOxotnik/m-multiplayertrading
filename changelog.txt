@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.4
+Date: 09. 11. 2019
+  Features:
+    - Added global market
+  Changes:
+    - Changed sprites of chests with adding shadows and high resolution version
+    - Changed icons of buy box and sell box
+  Notes:
+    - This update for Factorio 0.17 and updated by ZwerOxotnik
+    - I need much more tests etc
+
+---------------------------------------------------------------------------------------------------
 Version: 0.3.3
 Date: 08. 11. 2019
   Bugfixes:

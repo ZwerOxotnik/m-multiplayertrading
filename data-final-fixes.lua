@@ -12,7 +12,7 @@ end
 
 if settings.startup['land-claim'].value then
     local poles = {"small-electric-pole", "medium-electric-pole", "big-electric-pole", "substation"}
-    for i, pole_name in ipairs(poles) do
+    for _, pole_name in ipairs(poles) do
         local prototype = data.raw['electric-pole'][pole_name]
         if prototype then
             if prototype.supply_area_distance < 20 then
@@ -28,7 +28,7 @@ end
 if settings.startup['early-bird-research'].value then
     -- Find non-upgrade tech where no other tech uses it as a prerequisite.
     local function is_tech_valid_for_early_bird( tech )
-        for other_name, other_technology in pairs(data.raw.technology) do
+        for _, other_technology in pairs(data.raw.technology) do
             if other_technology.prerequisites then
                 for _, prerequisite in ipairs(other_technology.prerequisites) do
                     if prerequisite == tech.name then
@@ -46,7 +46,7 @@ if settings.startup['early-bird-research'].value then
         end
     end
     local earlybird_tech = {}
-    for i, tech_name in ipairs(valid_tech) do
+    for _, tech_name in ipairs(valid_tech) do
         local technology = data.raw.technology[tech_name]
         for i=1, 4 do
             local expensive_tech = copy(technology)

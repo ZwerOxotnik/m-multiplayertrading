@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.6.0
+Date: 22. 08. 2021
+  Changes:
+    - This available for translation on https://crowdin.com/project/factorio-mods-localization
+    - Optimized some events
+  Bugfixes:
+    - Changed Refunds
+    - Fixed icons
+---------------------------------------------------------------------------------------------------
 Version: 0.3.4
 Date: 09. 11. 2019
   Features:
@@ -59,7 +68,7 @@ Version: 0.2.1
 Date: 15. 01. 2019
   Bugfixes:
     - on_robot_built_entity
-  
+
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.0
 Date: 14. 01. 2019

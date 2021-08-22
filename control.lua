@@ -6,6 +6,13 @@ require "systems/land-claim"
 require "systems/specializations"
 require "systems/electric-trading-station"
 
+
+local floor = math.floor
+
+
+local START_ITEMS = {name = "small-electric-pole", count = 10}
+
+
 PLACE_NOMANSLAND_ITEMS = {
 	['locomotive'] = true,
 	['cargo-wagon'] = true,
@@ -53,14 +60,15 @@ function Init()
     for _, force in pairs(game.forces) do
         ForceCreated({force=force})
     end
-    for player_index, player in pairs(game.players) do
-        PlayerCreated({player_index=player_index})
+    for _, player in pairs(game.players) do
+		player.insert(START_ITEMS)
+		AddCreditsGUI(player)
     end
 end
 
 function PlayerCreated(event)
     local player = GetEventPlayer(event)
-    player.insert{name = "small-electric-pole", count = 10}
+    player.insert(START_ITEMS)
     AddCreditsGUI(player)
 end
 
@@ -88,13 +96,17 @@ function ModConfigurationChanged(event)
     end
 end
 
-function AddCreditsGUI(player)
-    if player.gui.left['credits'] then
-        player.gui.left['credits'].destroy()
-    end
-    if not player.gui.top['credits'] then
-        player.gui.top.add{type = "label", name = "credits", caption = {"multiplayertrading.gui.credits"}, style = "caption_label"}
-    end
+do
+	local label = {type = "label", name = "credits", caption = {"multiplayertrading.gui.credits"}, style = "caption_label"}
+	function AddCreditsGUI(player)
+		local gui = player.gui
+		if gui.left['credits'] then
+			gui.left['credits'].destroy()
+		end
+		if not gui.top['credits'] then
+			gui.top.add(label)
+		end
+	end
 end
 
 function ResearchCompleted(event)
@@ -138,15 +150,9 @@ function ResearchCompleted(event)
     end
 end
 
-function PrintAll(text)
-    for _, player in pairs(game.players) do
-        player.print(text)
-    end
-end
-
 function GetEventPlayer(event)
     if event.player_index then
-        return game.players[event.player_index]
+        return game.get_player(event.player_index)
     else
         return nil
     end
@@ -154,7 +160,7 @@ end
 
 function GetEventForce(event)
     if event.player_index then
-        return game.players[event.player_index].force
+        return game.get_player(event.player_index).force
     elseif event.robot then
         return event.robot.force
     else
@@ -195,22 +201,19 @@ function HandleEntityBuild(event)
 end
 
 function HandleEntityDied(event)
-    local entity = event.entity
-    if settings.startup['land-claim'].value and entity.type == "electric-pole" then
-        ClaimPoleRemoved(entity)
+    if settings.startup['land-claim'].value then
+        ClaimPoleRemoved(event.entity)
     end
 end
 
+-- TODO: OPTIMIZE!
 function OnTick(event)
-    for _, player in pairs(game.connected_players) do
-        player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, math.floor(global.credits[player.force.name])}
-    end
     for i=#global.sell_boxes, 1, -1 do
         if not global.sell_boxes[i].valid then
             table.remove( global.sell_boxes, i )
         end
     end
-    for i, sell_box in pairs(global.sell_boxes) do
+    for _, sell_box in pairs(global.sell_boxes) do
         local sell_order = global.orders[sell_box.unit_number]
         if sell_order and sell_order.name and sell_box.get_item_count(sell_order.name) > 0 then
             buy_boxes = sell_box.surface.find_entities_filtered{
@@ -239,7 +242,7 @@ function OnTick(event)
         end
     end
     local minting_speed = settings.global['credit-mint-speed'].value
-    for i, credit_mint in pairs(global.credit_mints) do
+    for _, credit_mint in pairs(global.credit_mints) do
         local energy = credit_mint.entity.energy / credit_mint.entity.electric_buffer_size
         credit_mint.progress = credit_mint.progress + (energy * minting_speed)
         if credit_mint.progress >= 1 then
@@ -456,7 +459,7 @@ function GiveCreditsCommand(event)
     local player = GetEventPlayer(event)
     if not event.parameter then return end
     local params = {}
-    for param in string.gmatch(event.parameter, "%g+") do 
+    for param in string.gmatch(event.parameter, "%g+") do
         table.insert(params, param)
     end
     local other_force_name = params[1]
@@ -488,7 +491,16 @@ script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_e
         HandleEntityBuild(event)
     end
 end)
-script.on_event({defines.events.on_entity_died, defines.events.on_player_mined_entity}, HandleEntityDied)
+script.on_event(
+	defines.events.on_entity_died,
+	HandleEntityDied,
+	{{filter = "type", type = "electric-pole"}}
+)
+script.on_event(
+	defines.events.on_player_mined_entity,
+	HandleEntityDied,
+	{{filter = "type", type = "electric-pole"}}
+)
 script.on_event(defines.events.on_player_created, PlayerCreated)
 script.on_event("sellbox-gui-open", function(event)
     local player = GetEventPlayer(event)
@@ -530,12 +542,21 @@ remote.add_interface("multiplayer-trading", {
 })
 
 script.on_nth_tick(60, function(event)
-    for unit_number, electric_trading_station in pairs(global.electric_trading_stations) do
+	local electric_trading_stations = global.electric_trading_stations
+    for unit_number, electric_trading_station in pairs(electric_trading_stations) do
         if not electric_trading_station.entity.valid then
-            global.electric_trading_stations[unit_number] = nil
+            electric_trading_stations[unit_number] = nil
         end
     end
-    UpdateElectricTradingStations(global.electric_trading_stations)
+    UpdateElectricTradingStations(electric_trading_stations)
+end)
+
+-- TODO: optimize
+script.on_nth_tick(120, function()
+	local forces_credits = global.credits
+	for _, player in pairs(game.connected_players) do
+		player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, floor(forces_credits[player.force.name])}
+	end
 end)
 
 if settings.startup['specializations'].value == true then

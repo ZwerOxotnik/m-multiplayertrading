@@ -1,3 +1,7 @@
+local max = math.max
+local floor = math.floor
+local abs = math.abs
+
 function ElectricTradingStationBuilt(entity)
     global.electric_trading_stations[entity.unit_number] = {
         ['entity'] = entity,
@@ -39,10 +43,13 @@ function BalanceEnergy(source, destination)
     local source_diff = balanced_energy - source.energy
     local dest_diff = balanced_energy - destination.energy
 
-    local source_price = global.electric_trading_stations[source.unit_number].sell_price
-    local dest_price = global.electric_trading_stations[destination.unit_number].sell_price
-    local source_bid = global.electric_trading_stations[source.unit_number].buy_bid
-    local dest_bid = global.electric_trading_stations[destination.unit_number].buy_bid
+	local ets = global.electric_trading_stations
+	local source_mod_data = ets[source.unit_number]
+	local destination_mod_data = ets[destination.unit_number]
+    local source_price = source_mod_data.sell_price
+    local dest_price = destination_mod_data.sell_price
+    local source_bid = source_mod_data.buy_bid
+    local dest_bid = destination_mod_data.buy_bid
 
     local source_cost = source_diff * 0.000001
     local dest_cost = dest_diff * 0.000001
@@ -69,7 +76,7 @@ function BalanceEnergy(source, destination)
 
     if (source_cost > 0 and not CanTransferCredits(source, source_cost)) then
         local signal = {type="item", name="accumulator"}
-        local message = "Cannot afford to buy power. " .. math.floor(source_cost) .. " short."
+        local message = "Cannot afford to buy power. " .. floor(source_cost) .. " short."
         for _, player in pairs(source.force.players) do
             player.add_custom_alert(source, signal, message, true)
         end
@@ -78,7 +85,7 @@ function BalanceEnergy(source, destination)
 
     if (dest_cost > 0 and not CanTransferCredits(destination, dest_cost)) then
         local signal = {type="item", name="accumulator"}
-        local message = "Cannot afford to buy power. " .. math.floor(dest_cost) .. " short."
+        local message = "Cannot afford to buy power. " .. floor(dest_cost) .. " short."
         for _, player in pairs(destination.force.players) do
             player.add_custom_alert(destination, signal, message, true)
         end
@@ -88,23 +95,24 @@ function BalanceEnergy(source, destination)
     -- Trade succesful
     AddCredits(source.force, source_cost * -1)
     AddCredits(destination.force, dest_cost * -1)
+	local diff = abs(source_diff) / 60.0
     if source_diff < 0 then
-        source.power_usage = math.abs(source_diff) / 60.0
+        source.power_usage = diff
         source.power_production = 0
     elseif source_diff > 0 then
         source.power_usage = 0
-        source.power_production = math.abs(source_diff) / 60.0
+        source.power_production = diff
     else
         source.power_usage = 0
         source.power_production = 0
     end
-    
+
     if dest_diff < 0 then
-        destination.power_usage = math.abs(source_diff) / 60.0
+        destination.power_usage = diff
         destination.power_production = 0
     elseif dest_diff > 0 then
         destination.power_usage = 0
-        destination.power_production = math.abs(source_diff) / 60.0
+        destination.power_production = diff
     else
         destination.power_usage = 0
         destination.power_production = 0
@@ -152,8 +160,9 @@ end
 
 function ElectricTradingStationGUIClose(event)
     local player = GetEventPlayer(event)
-    if player.gui.center['ets-gui'] then
-        player.gui.center['ets-gui'].destroy()
+	local ets_gui = player.gui.center['ets-gui']
+    if ets_gui then
+        ets_gui.destroy()
     end
 end
 
@@ -163,9 +172,9 @@ function ElectricTradingStationTextChanged(event)
     if ets_unit_number == nil then return end
     local textfield = event.element
     if textfield.name == "sell" then
-        global.electric_trading_stations[ets_unit_number].sell_price = math.max(tonumber(textfield.text) or 1, 1)
+        global.electric_trading_stations[ets_unit_number].sell_price = max(tonumber(textfield.text) or 1, 1)
     end
     if textfield.name == "buy" then
-        global.electric_trading_stations[ets_unit_number].buy_bid = math.max(tonumber(textfield.text) or 1, 0)
+        global.electric_trading_stations[ets_unit_number].buy_bid = max(tonumber(textfield.text) or 1, 0)
     end
 end

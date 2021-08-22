@@ -2,6 +2,7 @@ SPECIALIZATIONS = require "specializations-data"
 
 local GlobalMarket = util.table.deepcopy(data.raw.market['market'])
 GlobalMarket.name = "global-market"
+GlobalMarket.icon_size = 64
 GlobalMarket.allow_access_to_all_forces = false
 GlobalMarket.minable = {mining_time = 2, result = "global-market"}
 GlobalMarket.max_health = 600
@@ -125,7 +126,7 @@ local electricTradingStation = {
     type = "electric-energy-interface",
     name = "electric-trading-station",
     icon = "__base__/graphics/icons/accumulator.png",
-    icon_size = 32,
+    icon_size = 64, icon_mipmaps = 4,
     flags = {"placeable-neutral", "player-creation"},
     minable = {hardness = 0.2, mining_time = 0.5, result = "electric-trading-station"},
     max_health = 100,
@@ -215,7 +216,7 @@ data:extend{
         subgroup = "extraction-machine",
         stack_size = 1,
         icon = "__base__/graphics/icons/coin.png",
-        icon_size = 32
+		icon_size = 64
     },
     {
         type = "item",
@@ -224,7 +225,7 @@ data:extend{
         subgroup = "energy-pipe-distribution",
         stack_size = 100,
         icon = "__base__/graphics/icons/substation.png",
-        icon_size = 32
+		icon_size = 64
     },
     {
         type = "item",
@@ -236,7 +237,7 @@ data:extend{
             {icon = "__base__/graphics/icons/infinity-chest.png"},
             {icon = "__base__/graphics/icons/satellite.png"}
         },
-        icon_size = 32
+		icon_size = 64
     }
 }
 

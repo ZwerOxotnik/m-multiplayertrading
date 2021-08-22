@@ -1,11 +1,13 @@
 {
     "name": "m-multiplayertrading",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "factorio_version": "1.1",
     "title": "Multiplayer Trading",
     "author": "Luke Perkin",
     "contact": "zweroxotnik@gmail.com, lukeperkin@gmail.com",
     "homepage": "",
-    "source": "https://github.com/ZwerOxotnik/multiplayertrading",
-    "dependencies": ["base"]
+    "dependencies": [
+			"base",
+			"! multiplayertrading"
+		]
   }

@@ -212,26 +212,28 @@ function OnTick()
         local sell_order = orders[sell_box.unit_number]
 		if sell_order then -- it seems wrong
 			local sell_order_name = sell_order.name
-			local item_count = sell_box.get_item_count(sell_order.name)
-			if sell_order_name and item_count > 0 then
-				buy_boxes = sell_box.surface.find_entities_filtered{
-					area = Area(sell_box.position, 3),
-					name = "buy-box"
-				}
-				local valid_buy_boxes = {}
-				for _, buy_box in pairs(buy_boxes) do
-					local buy_order = orders[buy_box.unit_number]
-					if buy_box.force ~= sell_box.force and buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
-						table.insert(valid_buy_boxes, buy_box)
-					end
-				end
-				if #valid_buy_boxes > 0 then
-					for _, buy_box in pairs(valid_buy_boxes) do
-						local buy_order = orders[buy_box.unit_number]
-						Transaction(sell_box, buy_box, buy_order, 1)
-					end
-				end
-			end
+            if sell_order_name then
+                local item_count = sell_box.get_item_count(sell_order_name)
+                if item_count > 0 then
+                    buy_boxes = sell_box.surface.find_entities_filtered{
+                        area = Area(sell_box.position, 3),
+                        name = "buy-box"
+                    }
+                    local valid_buy_boxes = {}
+                    for _, buy_box in pairs(buy_boxes) do
+                        local buy_order = orders[buy_box.unit_number]
+                        if buy_box.force ~= sell_box.force and buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
+                            table.insert(valid_buy_boxes, buy_box)
+                        end
+                    end
+                    if #valid_buy_boxes > 0 then
+                        for _, buy_box in pairs(valid_buy_boxes) do
+                            local buy_order = orders[buy_box.unit_number]
+                            Transaction(sell_box, buy_box, buy_order, 1)
+                        end
+                    end
+                end
+            end
 		end
     end
 	local credit_mints = global.credit_mints

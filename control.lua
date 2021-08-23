@@ -199,47 +199,57 @@ function HandleEntityDied(event)
 end
 
 -- TODO: OPTIMIZE!
-function OnTick(event)
-    for i=#global.sell_boxes, 1, -1 do
-        if not global.sell_boxes[i].valid then
-            table.remove( global.sell_boxes, i )
+function OnTick()
+	local sell_boxes = global.sell_boxes
+    for i=#sell_boxes, 1, -1 do
+        if not sell_boxes[i].valid then
+            table.remove( sell_boxes, i )
         end
     end
+
+	local orders = global.orders
     for _, sell_box in pairs(global.sell_boxes) do
-        local sell_order = global.orders[sell_box.unit_number]
-        if sell_order and sell_order.name and sell_box.get_item_count(sell_order.name) > 0 then
-            buy_boxes = sell_box.surface.find_entities_filtered{
-                area = Area(sell_box.position, 3),
-                name = "buy-box"
-            }
-            local item_count = sell_box.get_item_count(sell_order.name)
-            local valid_buy_boxes = {}
-            for _, buy_box in pairs(buy_boxes) do
-                local buy_order = global.orders[buy_box.unit_number]
-                if buy_box.force ~= sell_box.force and buy_order and buy_order.name == sell_order.name and buy_order.value >= sell_order.value then
-                    table.insert(valid_buy_boxes, buy_box)
-                end
-            end
-            if #valid_buy_boxes > 0 then
-                for _, buy_box in pairs(valid_buy_boxes) do
-                    local buy_order = global.orders[buy_box.unit_number]
-                    local result = Transaction(sell_box, buy_box, buy_order, 1)
-                end
-            end
-        end
+        local sell_order = orders[sell_box.unit_number]
+		if sell_order then -- it seems wrong
+			local sell_order_name = sell_order.name
+			local item_count = sell_box.get_item_count(sell_order.name)
+			if sell_order_name and item_count > 0 then
+				buy_boxes = sell_box.surface.find_entities_filtered{
+					area = Area(sell_box.position, 3),
+					name = "buy-box"
+				}
+				local valid_buy_boxes = {}
+				for _, buy_box in pairs(buy_boxes) do
+					local buy_order = orders[buy_box.unit_number]
+					if buy_box.force ~= sell_box.force and buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
+						table.insert(valid_buy_boxes, buy_box)
+					end
+				end
+				if #valid_buy_boxes > 0 then
+					for _, buy_box in pairs(valid_buy_boxes) do
+						local buy_order = orders[buy_box.unit_number]
+						Transaction(sell_box, buy_box, buy_order, 1)
+					end
+				end
+			end
+		end
     end
-    for i=#global.credit_mints, 1, -1 do
-        if not global.credit_mints[i].entity.valid then
-            table.remove( global.credit_mints, i )
+	local credit_mints = global.credit_mints
+    for i=#credit_mints, 1, -1 do
+        if not credit_mints[i].entity.valid then
+            table.remove( credit_mints, i )
         end
     end
     local minting_speed = settings.global['credit-mint-speed'].value
-    for _, credit_mint in pairs(global.credit_mints) do
-        local energy = credit_mint.entity.energy / credit_mint.entity.electric_buffer_size
-        credit_mint.progress = credit_mint.progress + (energy * minting_speed)
-        if credit_mint.progress >= 1 then
+    for _, credit_mint in pairs(credit_mints) do
+		local entity = credit_mint.entity
+        local energy = entity.energy / entity.electric_buffer_size
+        local progress = credit_mint.progress + (energy * minting_speed)
+        if progress >= 1 then
             credit_mint.progress = 0
-            AddCredits(credit_mint.entity.force, 1)
+            AddCredits(entity.force, 1)
+		else
+			credit_mint.progress = progress
         end
     end
 end
@@ -258,7 +268,7 @@ function CanTransferCredits(control, amount)
 end
 
 function TransferCredits(buy_force, sell_force, amount)
-    AddCredits(buy_force, amount * -1)
+    AddCredits(buy_force, -amount)
     AddCredits(sell_force, amount)
 end
 
@@ -267,15 +277,17 @@ function AddCredits(force, amount)
     force.item_production_statistics.on_flow("coin", amount)
 end
 
+---@return table
 function Transaction(source_inventory, destination_inventory, order, count)
     if order and source_inventory and destination_inventory and count > 0 then
-        local item_stack = {name = order.name, count = count}
+		local order_name = order.name
+        local item_stack = {name = order_name, count = count}
         local cost = order.value * item_stack.count
-        local source_has_items = source_inventory.get_item_count(order.name) > 0
+        local source_has_items = source_inventory.get_item_count(order_name) > 0 -- TODO: change
         local can_xfer_stack = CanTransferItemStack(source_inventory, destination_inventory, item_stack)
         local can_xfer_credits = CanTransferCredits(destination_inventory, cost)
         if can_xfer_stack and can_xfer_credits then
-            local items_removed = source_inventory.remove_item(item_stack)
+            source_inventory.remove_item(item_stack)
             destination_inventory.insert(item_stack)
             TransferCredits(destination_inventory.force, source_inventory.force, cost)
             return {success = true}
@@ -522,7 +534,7 @@ script.on_event(defines.events.on_force_created, ForceCreated)
 if settings.startup['early-bird-research'].value then
     script.on_event(defines.events.on_research_finished, ResearchCompleted)
 end
-commands.add_command("give-credits", {"command-help.give-credits"}, GiveCreditsCommand)
+-- commands.add_command("give-credits", {"command-help.give-credits"}, GiveCreditsCommand) -- TOO BUGGY
 
 remote.add_interface("multiplayer-trading", {
     ["add-money"] = function(force, amount)
@@ -533,14 +545,14 @@ remote.add_interface("multiplayer-trading", {
     end
 })
 
-script.on_nth_tick(60, function(event)
-	local electric_trading_stations = global.electric_trading_stations
-    for unit_number, electric_trading_station in pairs(electric_trading_stations) do
+script.on_nth_tick(60, function()
+	local stations = global.electric_trading_stations
+    for unit_number, electric_trading_station in pairs(stations) do
         if not electric_trading_station.entity.valid then
-            electric_trading_stations[unit_number] = nil
+            stations[unit_number] = nil
         end
     end
-    UpdateElectricTradingStations(electric_trading_stations)
+    UpdateElectricTradingStations(stations)
 end)
 
 -- TODO: optimize

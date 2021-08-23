@@ -42,6 +42,7 @@ local function GetSpecializationItemNameLocale(spec)
     return locale
 end
 
+-- TODO: optimize
 function UpdateSpecializations()
     local specializations = global.specializations
     for player_index, player in pairs(game.players) do -- TODO: change to game.connected_players (don't forget about other events)
@@ -54,15 +55,16 @@ function UpdateSpecializations()
 
     for force_name, force in pairs(game.forces) do
         for _, spec in pairs(SPECIALIZATIONS) do
-            if specializations[spec.name] == nil then
+			local spec_name = spec.name
+            if specializations[spec_name] == nil then
                 local current_sum = GetCurrentStatSumForSpecialization(spec, force)
                 local last_stat = GetLastStatForSpecialization(spec, force)
                 local production_rate = (current_sum - last_stat.sum)
                 last_stat.sum = current_sum
                 last_stat.rate = production_rate
                 if production_rate >= spec.requirement.production then
-                    specializations[spec.name] = force_name
-                    force.recipes[spec.name].enabled = true
+                    specializations[spec_name] = force_name
+                    force.recipes[spec_name].enabled = true
 					local item_name = {GetSpecializationItemNameLocale(spec)}
                     force.print({
                         "message.specialization-unlock",

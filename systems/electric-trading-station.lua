@@ -10,42 +10,17 @@ function ElectricTradingStationBuilt(entity)
     }
 end
 
-function UpdateElectricTradingStations(stations)
-    local visited = {}
-    for unit_number, electric_trading_station in pairs(stations) do
-        if electric_trading_station.entity.valid then
-            table.insert(visited, electric_trading_station.entity)
-            local source = electric_trading_station.entity
-            local adjacent = source.surface.find_entities_filtered{
-                area = Area(source.position, 3),
-                name = "electric-trading-station"
-            }
-            local highest_bidder = nil
-            local highest_bid = 0
-            for _, dest in pairs(adjacent) do
-                local dest_bid = global.electric_trading_stations[dest.unit_number].buy_bid
-                local dest_full = (dest.energy >= 6000000)
-                if dest.force ~= source.force and dest_bid > highest_bid and not dest_full then
-                    highest_bid = dest_bid
-                    highest_bidder = dest
-                end
-            end
-            if highest_bidder then
-                BalanceEnergy(source, highest_bidder)
-            end
-        end
-    end
-end
-
-function BalanceEnergy(source, destination)
-    local energy_sum = source.energy + destination.energy
+local function BalanceEnergy(source, destination)
+    local from_energy = source.energy
+    local to_energy = from_energy
+    local energy_sum = source.energy + to_energy
     local balanced_energy = energy_sum / 2.0
-    local source_diff = balanced_energy - source.energy
-    local dest_diff = balanced_energy - destination.energy
+    local source_diff = balanced_energy - from_energy
+    local dest_diff = balanced_energy - to_energy
 
-	local ets = global.electric_trading_stations
-	local source_mod_data = ets[source.unit_number]
-	local destination_mod_data = ets[destination.unit_number]
+    local ets = global.electric_trading_stations
+    local source_mod_data = ets[source.unit_number]
+    local destination_mod_data = ets[destination.unit_number]
     local source_price = source_mod_data.sell_price
     local dest_price = destination_mod_data.sell_price
     local source_bid = source_mod_data.buy_bid
@@ -77,7 +52,7 @@ function BalanceEnergy(source, destination)
     if (source_cost > 0 and not CanTransferCredits(source, source_cost)) then
         local signal = {type="item", name="accumulator"}
         local message = "Cannot afford to buy power. " .. floor(source_cost) .. " short."
-        for _, player in pairs(source.force.players) do
+        for _, player in pairs(source.force.connected_players) do
             player.add_custom_alert(source, signal, message, true)
         end
         return
@@ -86,16 +61,16 @@ function BalanceEnergy(source, destination)
     if (dest_cost > 0 and not CanTransferCredits(destination, dest_cost)) then
         local signal = {type="item", name="accumulator"}
         local message = "Cannot afford to buy power. " .. floor(dest_cost) .. " short."
-        for _, player in pairs(destination.force.players) do
+        for _, player in pairs(destination.force.connected_players) do
             player.add_custom_alert(destination, signal, message, true)
         end
         return
     end
 
     -- Trade succesful
-    AddCredits(source.force, source_cost * -1)
-    AddCredits(destination.force, dest_cost * -1)
-	local diff = abs(source_diff) / 60.0
+    AddCredits(source.force, -source_cost)
+    AddCredits(destination.force, -dest_cost)
+    local diff = abs(source_diff) / 60.0
     if source_diff < 0 then
         source.power_usage = diff
         source.power_production = 0
@@ -116,6 +91,36 @@ function BalanceEnergy(source, destination)
     else
         destination.power_usage = 0
         destination.power_production = 0
+    end
+end
+
+do
+    local insert = table.insert
+    function UpdateElectricTradingStations(stations)
+        local visited = {}
+        for _, electric_trading_station in pairs(stations) do
+            local source = electric_trading_station.entity
+            if source.valid then
+                insert(visited, source)
+                local adjacent = source.surface.find_entities_filtered{
+                    area = Area(source.position, 3),
+                    name = "electric-trading-station"
+                }
+                local highest_bidder = nil
+                local highest_bid = 0
+                for _, dest in pairs(adjacent) do
+                    local dest_bid = stations[dest.unit_number].buy_bid
+                    local dest_full = (dest.energy >= 6000000)
+                    if dest.force ~= source.force and dest_bid > highest_bid and not dest_full then
+                        highest_bid = dest_bid
+                        highest_bidder = dest
+                    end
+                end
+                if highest_bidder then
+                    BalanceEnergy(source, highest_bidder)
+                end
+            end
+        end
     end
 end
 
@@ -160,7 +165,7 @@ end
 
 function ElectricTradingStationGUIClose(event)
     local player = GetEventPlayer(event)
-	local ets_gui = player.gui.center['ets-gui']
+    local ets_gui = player.gui.center['ets-gui']
     if ets_gui then
         ets_gui.destroy()
     end

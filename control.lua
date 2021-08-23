@@ -47,7 +47,7 @@ POLES = {
     'substation'
 }
 
-function Init()
+local function CheckGlobalData()
     global.sell_boxes = global.sell_boxes or {}
     global.orders = global.orders or {}
     global.credits = global.credits or {}
@@ -57,6 +57,10 @@ function Init()
     global.early_bird_tech = global.early_bird_tech or {}
     global.open_order = global.open_order or {}
     global.electric_trading_stations =  global.electric_trading_stations or {}
+end
+
+local function Init()
+    CheckGlobalData()
     for _, force in pairs(game.forces) do
         ForceCreated({force=force})
     end
@@ -81,18 +85,6 @@ function ForceCreated(event)
         if string.find(name, "-mpt-") ~= nil then
             technology.enabled = false
         end
-    end
-end
-
-function ModConfigurationChanged(event)
-    if global.output_stat == nil then
-        global.output_stat = {}
-    end
-    if global.electric_trading_stations == nil then
-        global.electric_trading_stations = {}
-    end
-    for _, player in pairs(game.players) do
-        AddCreditsGUI(player)
     end
 end
 
@@ -479,7 +471,7 @@ function CheatCredits(event)
 end
 
 script.on_init(Init)
-script.on_configuration_changed(ModConfigurationChanged)
+script.on_configuration_changed(CheckGlobalData)
 script.on_event(defines.events.on_tick, OnTick)
 script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, function(event)
     local can_build = true

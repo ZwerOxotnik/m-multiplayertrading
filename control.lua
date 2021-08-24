@@ -76,14 +76,10 @@ local function Init()
     end
     for _, player in pairs(game.players) do
         player.insert(START_ITEMS)
+    end
+    for _, player in pairs(game.connected_players) do
         AddCreditsGUI(player)
     end
-end
-
-function PlayerCreated(event)
-    local player = GetEventPlayer(event)
-    player.insert(START_ITEMS)
-    AddCreditsGUI(player)
 end
 
 function ForceCreated(event)
@@ -495,7 +491,12 @@ function CheatCredits(event)
 end
 
 script.on_init(Init)
-script.on_configuration_changed(CheckGlobalData)
+script.on_configuration_changed(function ()
+	CheckGlobalData()
+	for _, player in pairs(game.connected_players) do
+        AddCreditsGUI(player)
+    end
+end)
 script.on_event(defines.events.on_tick, OnTick)
 script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, function(event)
     local can_build = true
@@ -517,7 +518,24 @@ script.on_event(
     HandleEntityDied,
     {{filter = "type", type = "electric-pole"}}
 )
-script.on_event(defines.events.on_player_created, PlayerCreated)
+local function on_player_created(event)
+	game.get_player(event.player_index).insert(START_ITEMS)
+end
+script.on_event(defines.events.on_player_created, function(event)
+	pcall(on_player_created, event)
+end)
+local function on_player_joined(event)
+	AddCreditsGUI(game.get_player(event.player_index))
+end
+script.on_event(defines.events.on_player_joined_game, function(event)
+	pcall(on_player_joined, event)
+end)
+local function on_player_left_game(event)
+	game.get_player(event.player_index).gui.left.credits.destroy()
+end
+script.on_event(defines.events.on_player_left_game, function(event)
+	pcall(on_player_left_game, event)
+end)
 script.on_event("sellbox-gui-open", function(event)
     local player = GetEventPlayer(event)
     local entity = player.selected

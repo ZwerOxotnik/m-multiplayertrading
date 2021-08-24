@@ -1,6 +1,7 @@
 local function GetClaimedLand(entity)
+    local entity_prototypes = game.entity_prototypes
     for _, poleName in pairs(POLES) do
-        local prototype = game.entity_prototypes[poleName]
+        local prototype = entity_prototypes[poleName]
         local radius = prototype.supply_area_distance
         if entity.type == "electric-pole" then
             radius = radius + entity.prototype.supply_area_distance
@@ -24,7 +25,7 @@ end
 local function GetClaimCost(entity)
     if entity.type == "electric-pole" then
         local supply_area = entity.prototype.supply_area_distance
-        local cost = supply_area * supply_area * settings.global['land-claim-cost'].value
+        local cost = supply_area * supply_area * settings.global['land-claim-cost'].value -- TODO: optimize
         return {cost = cost, can_afford = CanTransferCredits(entity, cost)}
     end
     return {cost = false}
@@ -33,7 +34,9 @@ end
 function ClaimPoleBuilt(entity)
     local claim = GetClaimCost(entity)
     if claim.cost then
-        global.credits[entity.force.name] = global.credits[entity.force.name] - claim.cost
+        local credits = global.credits
+        local force_name = entity.force.name
+        credits[force_name] = credits[force_name] - claim.cost
     end
 end
 

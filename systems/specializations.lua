@@ -46,17 +46,17 @@ end
 function UpdateSpecializations()
     local specializations = global.specializations
     for player_index, player in pairs(game.players) do -- TODO: change to game.connected_players (don't forget about other events)
-		local gui = player.gui.left['specialization-gui']
+        local gui = player.gui.left['specialization-gui']
         if gui then
             gui.destroy()
-            SpecializationGUI({player_index = player_index})
+            SpecializationGUI(player)
         end
     end
 
     for force_name, force in pairs(game.forces) do
         local recipes = force.recipes
         for _, spec in pairs(SPECIALIZATIONS) do
-			local spec_name = spec.name
+            local spec_name = spec.name
             if specializations[spec_name] == nil then
                 local current_sum = GetCurrentStatSumForSpecialization(spec, force)
                 local last_stat = GetLastStatForSpecialization(spec, force)
@@ -66,7 +66,7 @@ function UpdateSpecializations()
                 if production_rate >= spec.requirement.production then
                     specializations[spec_name] = force_name
                     recipes[spec_name].enabled = true
-					local item_name = {GetSpecializationItemNameLocale(spec)}
+                    local item_name = {GetSpecializationItemNameLocale(spec)}
                     force.print({
                         "message.specialization-unlock",
                         item_name
@@ -82,41 +82,43 @@ function UpdateSpecializations()
     end
 end
 
-function SpecializationGUI( event )
-    local player = GetEventPlayer(event)
-	local leftGUI = player.gui.left
+local horizontal_flow = {type = "flow"}
+local vertical_flow = {type = "flow", direction = "vertical"}
+function SpecializationGUI( player )
+    local leftGUI = player.gui.left
     if leftGUI['specialization-gui'] then
         leftGUI['specialization-gui'].destroy()
-		return
-    else
-        local frame = leftGUI.add{type = "frame", name = "specialization-gui", caption = "Specializations"}
-        local flow = frame.add{type = "flow", direction = "vertical"}
-        for _, spec in pairs(SPECIALIZATIONS) do
-            local row = flow.add{type = "flow", direction = "horizontal"}
-            local force_name = global.specializations[spec.name]
+        return
+    end
 
-            local sprite = GetSpecializationItemSprite(spec)
-            local tooltip = GetSpecializationItemNameLocale(spec)
-            row.add{type = "sprite", sprite = sprite, tooltip = {tooltip}}
+    local frame = leftGUI.add{type = "frame", name = "specialization-gui", caption = "Specializations"}
+    local flow = frame.add(vertical_flow)
+    local specializations = global.specializations
+    for _, spec in pairs(SPECIALIZATIONS) do
+        local row = flow.add(horizontal_flow)
+        local force_name = specializations[spec.name]
 
-            local style = "bold_label"
-            if force_name == nil then
-                style = "bold_label"
-                local requirement = row.add{type = "flow", direction = "vertical"}
-				local production = spec.requirement.production
-                local caption = "Available (produce " .. tostring(production) .. "/min to unlock)"
-                requirement.add{type = "label", caption = caption, style = style}
-                local stat = GetLastStatForSpecialization(spec, player.force)
-                local progress = stat.rate / production
-                requirement.add{type = "progressbar", name = "progress", value = progress}
+        local sprite = GetSpecializationItemSprite(spec)
+        local tooltip = GetSpecializationItemNameLocale(spec)
+        row.add{type = "sprite", sprite = sprite, tooltip = {tooltip}}
+
+        local style = "bold_label"
+        if force_name == nil then
+            style = "bold_label"
+            local requirement = row.add(vertical_flow)
+            local production = spec.requirement.production
+            local caption = "Available (produce " .. tostring(production) .. "/min to unlock)"
+            requirement.add{type = "label", caption = caption, style = style}
+            local stat = GetLastStatForSpecialization(spec, player.force)
+            local progress = stat.rate / production
+            requirement.add{type = "progressbar", name = "progress", value = progress}
+        else
+            if force_name == player.force.name then
+                style = "bold_green_label"
             else
-                if force_name == player.force.name then
-                    style = "bold_green_label"
-                else
-                    style = "bold_red_label"
-                end
-                row.add{type = "label", caption = force_name, style = style}
+                style = "bold_red_label"
             end
+            row.add{type = "label", caption = force_name, style = style}
         end
     end
 end

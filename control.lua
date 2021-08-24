@@ -7,10 +7,28 @@ require "systems/specializations"
 require "systems/electric-trading-station"
 
 
+--#region Constants
 local floor = math.floor
-
-
 local START_ITEMS = {name = "small-electric-pole", count = 10}
+local IS_LAND_CLAIM = settings.startup['land-claim'].value
+---#endregion
+
+
+--#region Global data
+local electric_trading_stations
+local credit_mints
+local sell_boxes
+local orders
+local open_order
+local early_bird_tech
+local credits
+---#endregion
+
+
+--#region global settings
+local minting_speed = settings.global['credit-mint-speed'].value
+local starting_credits = settings.global['starting-credits'].value
+--#endregion
 
 
 PLACE_NOMANSLAND_ITEMS = {
@@ -47,6 +65,16 @@ POLES = {
     'substation'
 }
 
+local function link_data()
+    credit_mints = global.credit_mints
+    electric_trading_stations = global.electric_trading_stations
+    sell_boxes = global.sell_boxes
+    orders = global.orders
+    open_order = global.open_order
+    early_bird_tech = global.early_bird_tech
+    credits = global.credits
+end
+
 local function CheckGlobalData()
     global.sell_boxes = global.sell_boxes or {}
     global.orders = global.orders or {}
@@ -56,20 +84,23 @@ local function CheckGlobalData()
     global.output_stat = global.output_stat or {}
     global.early_bird_tech = global.early_bird_tech or {}
     global.open_order = global.open_order or {}
-    global.electric_trading_stations =  global.electric_trading_stations or {}
+    global.electric_trading_stations = global.electric_trading_stations or {}
 
-    local specializations = global.specializations
-    for force_name, force in pairs(game.forces) do
-        local recipes = force.recipes
-        for spec_name, _force_name in pairs(specializations)  do
-            if _force_name == force_name then
-                recipes[spec_name].enabled = true
-            end
+    link_data()
+
+    for unit_number, entity in pairs(sell_boxes) do
+        if not entity.valid then
+            sell_boxes[unit_number] = nil
+        end
+    end
+    for unit_number, data in pairs(credit_mints) do
+        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
+            credit_mints[unit_number] = nil
         end
     end
 end
 
-local function Init()
+local function on_init()
     CheckGlobalData()
     for _, force in pairs(game.forces) do
         ForceCreated({force=force})
@@ -82,10 +113,14 @@ local function Init()
     end
 end
 
+local function on_load()
+    link_data()
+end
+
 function ForceCreated(event)
     local force = event.force
-    if global.credits[force.name] == nil then
-        global.credits[force.name] = settings.global['starting-credits'].value
+    if credits[force.name] == nil then
+        credits[force.name] = starting_credits
     end
     for name, technology in pairs(force.technologies) do
         if string.find(name, "-mpt-") ~= nil then
@@ -114,10 +149,11 @@ function ResearchCompleted(event)
     if research.force.technologies[base_tech_name .. "-mpt-1"] == nil then
         return
     end
-    global.early_bird_tech[research.force.name .. "/" .. base_tech_name] = true
+    early_bird_tech[research.force.name .. "/" .. base_tech_name] = true
     for _, force in pairs(game.forces) do
         local force_tech_state_id = force.name .. "/" .. base_tech_name
-        if not force.technologies[research.name].researched then
+        local tech = force.technologies[research.name]
+        if not tech.researched then
             local progress = force.get_saved_technology_progress(research.name)
             if string.find(research.name, "-mpt-") ~= nil then
                 -- Another force has researched the 2nd, 3rd or 4th version of this tech.
@@ -129,10 +165,10 @@ function ResearchCompleted(event)
                         progress = progress / math.pow(tech_cost_multiplier, tier + 1)
                         force.set_saved_technology_progress(next_tech_name, progress)
                     end
-                    if not global.early_bird_tech[force_tech_state_id] then
+                    if not early_bird_tech[force_tech_state_id] then
                         force.technologies[next_tech_name].enabled = true
                     end
-                    force.technologies[research.name].enabled = false
+                    tech.enabled = false
                 end
             else
                 -- Another force has researched this tech for the 1st time.
@@ -142,7 +178,7 @@ function ResearchCompleted(event)
                     force.set_saved_technology_progress(next_tech_name, progress)
                 end
                 force.technologies[next_tech_name].enabled = true
-                force.technologies[research.name].enabled = false
+                tech.enabled = false
             end
         end
     end
@@ -167,74 +203,80 @@ function GetEventForce(event)
 end
 
 function Area(position, radius)
+    local x = position.x
+    local y = position.y
     return {
-        {position.x - radius, position.y - radius},
-        {position.x + radius, position.y + radius}
+        {x - radius, y - radius},
+        {x + radius, y + radius}
     }
 end
 
 function HandleEntityBuild(event)
     local entity = event.created_entity
     if not entity.valid then return end
-    if entity.name == "sell-box" then
-        entity.operable = false
-        table.insert(global.sell_boxes, entity)
+
+    if IS_LAND_CLAIM and entity.type == "electric-pole" then
+        ClaimPoleBuilt(entity)
+        return
     end
-    if entity.name == "buy-box" then
+
+    local entity_name = entity.name
+    if entity_name == "sell-box" then
         entity.operable = false
-        table.insert(global.sell_boxes, entity)
-    end
-    if entity.name == "credit-mint" then
-        table.insert(global.credit_mints, {
+        sell_boxes[entity.unit_number] = entity
+    elseif entity_name == "buy-box" then
+        entity.operable = false
+        sell_boxes[entity.unit_number] = entity -- this seems weird
+    elseif entity_name == "credit-mint" then
+        credit_mints[entity.unit_number] = {
             ['entity'] = entity,
             ['progress'] = 0
-        })
-    end
-    if settings.startup['land-claim'].value and entity.type == "electric-pole" then
-        ClaimPoleBuilt(entity)
-    end
-    if entity.name == "electric-trading-station" then
+        }
+    elseif entity.name == "electric-trading-station" then
         ElectricTradingStationBuilt(entity)
     end
 end
 
-function HandleEntityDied(event)
-    if settings.startup['land-claim'].value then
-        ClaimPoleRemoved(event.entity)
+local function HandleEntityMined(event)
+    local entity = event.entity
+    local entity_name = entity.name
+    if entity.type == "electric-pole" then
+        if IS_LAND_CLAIM then
+            ClaimPoleRemoved(event.entity)
+        end
+        return
+    elseif entity_name == "credit-mint" then
+        credit_mints[entity.unit_number] = nil
+    else -- "buy-box", "sell-box"
+        sell_boxes[entity.unit_number] = nil
+    end
+end
+
+local function HandleEntityDied(event)
+    local entity = event.entity
+    if entity.name == "credit-mint" then
+        credit_mints[entity.unit_number] = nil
+    else -- "buy-box", "sell-box"
+        sell_boxes[entity.unit_number] = nil
     end
 end
 
 -- TODO: OPTIMIZE!
-function OnTick()
-    local sell_boxes = global.sell_boxes
-    for i=#sell_boxes, 1, -1 do
-        if not sell_boxes[i].valid then
-            table.remove( sell_boxes, i )
-        end
-    end
-
-    local orders = global.orders
-    for _, sell_box in pairs(global.sell_boxes) do
+local function check_boxes()
+    for _, sell_box in pairs(sell_boxes) do
         local sell_order = orders[sell_box.unit_number]
         if sell_order then -- it seems wrong
             local sell_order_name = sell_order.name
             if sell_order_name then
                 local item_count = sell_box.get_item_count(sell_order_name)
                 if item_count > 0 then
-                    buy_boxes = sell_box.surface.find_entities_filtered{
+                    local buy_boxes = sell_box.surface.find_entities_filtered{
                         area = Area(sell_box.position, 3),
                         name = "buy-box"
                     }
-                    local valid_buy_boxes = {}
-                    for _, buy_box in pairs(buy_boxes) do
+                    for _, buy_box in pairs(buy_boxes) do -- it seems overcomplex
                         local buy_order = orders[buy_box.unit_number]
                         if buy_box.force ~= sell_box.force and buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
-                            table.insert(valid_buy_boxes, buy_box)
-                        end
-                    end
-                    if #valid_buy_boxes > 0 then
-                        for _, buy_box in pairs(valid_buy_boxes) do
-                            local buy_order = orders[buy_box.unit_number]
                             Transaction(sell_box, buy_box, buy_order, 1)
                         end
                     end
@@ -242,14 +284,7 @@ function OnTick()
             end
         end
     end
-    local credit_mints = global.credit_mints
-    for i=#credit_mints, 1, -1 do
-        if not credit_mints[i].entity.valid then
-            table.remove( credit_mints, i )
-        end
-    end
-    local minting_speed = settings.global['credit-mint-speed'].value
-    for _, credit_mint in pairs(credit_mints) do
+    for _, credit_mint in pairs(credit_mints) do --TODO: optimize
         local entity = credit_mint.entity
         local energy = entity.energy / entity.electric_buffer_size
         local progress = credit_mint.progress + (energy * minting_speed)
@@ -268,8 +303,8 @@ function CanTransferItemStack(source_inventory, destination_inventory, item_stac
 end
 
 function CanTransferCredits(control, amount)
-    local credits = global.credits[control.force.name]
-    if credits >= amount then
+    local force_credits = credits[control.force.name]
+    if force_credits >= amount then
         return true
     end
     return false
@@ -281,7 +316,8 @@ function TransferCredits(buy_force, sell_force, amount)
 end
 
 function AddCredits(force, amount)
-    global.credits[force.name] = global.credits[force.name] + amount
+    local force_name = force.name
+    credits[force_name] = credits[force_name] + amount
     force.item_production_statistics.on_flow("coin", amount)
 end
 
@@ -311,12 +347,12 @@ function Transaction(source_inventory, destination_inventory, order, count)
     return {success = false}
 end
 
-function SellboxGUIOpen(event)
-    local player = GetEventPlayer(event)
-    local entity = player.selected
-    if entity and entity.valid and global.open_order[player.index] == nil then
+function SellboxGUIOpen(player, entity)
+    local player_index = player.index
+    if entity and entity.valid and open_order[player_index] == nil then
         local same_force = (entity.force == player.force)
         if entity.name == "sell-box" then
+            local unit_number = entity.unit_number
             local frame = player.gui.center.add{type = "frame", direction = "vertical", name = "sell-box-gui", caption = "Sell Box"}
             local row1 = frame.add{type = "flow", direction = "horizontal"}
             local item_picker = row1.add{type = "choose-elem-button", elem_type = "item", name = "sell-box-item"}
@@ -327,28 +363,27 @@ function SellboxGUIOpen(event)
                 item_value = row1.add{type = "label", caption = "price: ", name = "sell-box-value"}
                 item_picker.locked = true
             end
-            local order = global.orders[entity.unit_number]
+            local order = orders[unit_number]
             if not order then
                 order = {
                     type = "sell",
                     ['entity'] = entity,
                     value = 1
                 }
-                global.orders[entity.unit_number] = order
+                orders[unit_number] = order
             end
-            if order then
-                item_picker.elem_value = order.name
-                global.open_order[player.index] = order
-                if same_force then
-                    item_value.text = tostring(order.value)
-                else
-                    item_value.caption = "price: " .. tostring(order.value)
-                    local row2 = frame.add{type = "flow", direction = "horizontal"}
-                    row2.add{type = "button", caption = "Buy 1", name = "buy-button-1"}
-                    row2.add{type = "button", caption = "Buy Max", name = "buy-button-all"}
-                end
+            item_picker.elem_value = order.name
+            open_order[player_index] = order
+            if same_force then
+                item_value.text = tostring(order.value)
+            else
+                item_value.caption = "price: " .. tostring(order.value)
+                local row2 = frame.add{type = "flow", direction = "horizontal"}
+                row2.add{type = "button", caption = "Buy 1", name = "buy-button-1"}
+                row2.add{type = "button", caption = "Buy Max", name = "buy-button-all"}
             end
         elseif entity.name == "buy-box" then
+            local unit_number = entity.unit_number
             local frame = player.gui.center.add{type = "frame", direction = "vertical", name = "buy-box-gui", caption = "Buy Box"}
             local row1 = frame.add{type = "flow", direction = "horizontal"}
             local item_picker = row1.add{type = "choose-elem-button", elem_type = "item", name = "buy-box-item"}
@@ -359,26 +394,24 @@ function SellboxGUIOpen(event)
                 item_value = row1.add{type = "label", caption = "price: ", name = "sell-box-value"}
                 item_picker.locked = true
             end
-            local order = global.orders[entity.unit_number]
+            local order = orders[unit_number]
             if not order then
                 order = {
                     type = "buy",
                     ['entity'] = entity,
                     value = 1
                 }
-                global.orders[entity.unit_number] = order
+                orders[unit_number] = order
             end
-            if order then
-                item_picker.elem_value = order.name
-                global.open_order[player.index] = order
-                if same_force then
-                    item_value.text = tostring(order.value)
-                else
-                    item_value.caption = "price: " .. tostring(order.value)
-                    local row2 = frame.add{type = "flow", direction = "horizontal"}
-                    row2.add{type = "button", caption = "Sell 1", name = "sell-button-1"}
-                    row2.add{type = "button", caption = "Sell Max", name = "sell-button-all"}
-                end
+            item_picker.elem_value = order.name
+            open_order[player_index] = order
+            if same_force then
+                item_value.text = tostring(order.value)
+            else
+                item_value.caption = "price: " .. tostring(order.value)
+                local row2 = frame.add{type = "flow", direction = "horizontal"}
+                row2.add{type = "button", caption = "Sell 1", name = "sell-button-1"}
+                row2.add{type = "button", caption = "Sell Max", name = "sell-button-all"}
             end
         end
     end
@@ -388,161 +421,243 @@ function SellOrBuyGUIClose(event)
     local player = GetEventPlayer(event)
     local gui = player.gui.center
     if gui['sell-box-gui'] then
-        global.open_order[player.index] = nil
+        open_order[player.index] = nil
         gui['sell-box-gui'].destroy()
     end
     if gui['buy-box-gui'] then
-        global.open_order[player.index] = nil
+        open_order[player.index] = nil
         gui['buy-box-gui'].destroy()
     end
 end
 
 function GUITextChanged(event)
     local player = GetEventPlayer(event)
-    local textfield = event.element
-    if textfield.parent.name == "ets-gui" then
+    local element = event.element
+    if element.parent.name == "ets-gui" then -- TODO: check
         ElectricTradingStationTextChanged(event)
     end
-    if textfield.name == "buy-box-value" then
-        local buy_box = global.open_order[player.index].entity
-        local order = global.orders[buy_box.unit_number]
-        order.value = tonumber(textfield.text) or 1
-        global.orders[buy_box.unit_number] = order
-    end
-    if textfield.name == "sell-box-value" then
-        local sell_box = global.open_order[player.index].entity
-        local order = global.orders[sell_box.unit_number]
-        order.value = tonumber(textfield.text) or 1
-        global.orders[sell_box.unit_number] = order
+
+    local element_name = element.name
+    if element_name == "buy-box-value" then
+        orders[open_order[player.index].entity.unit_number].value = tonumber(element.text) or 1
+    elseif element_name == "sell-box-value" then
+        orders[open_order[player.index].entity.unit_number].value = tonumber(element.text) or 1
     end
 end
 
 function GUIElemChanged(event)
-    local player = GetEventPlayer(event)
-    local elem_picker = event.element
-    if elem_picker.name == "buy-box-item" then
-        local buy_box = global.open_order[player.index].entity
-        local order = global.orders[buy_box.unit_number]
-        order.name = elem_picker.elem_value
-        global.orders[buy_box.unit_number] = order
-    end
-    if elem_picker.name == "sell-box-item" then
-        local sell_box = global.open_order[player.index].entity
-        local order = global.orders[sell_box.unit_number]
-        order.name = elem_picker.elem_value
-        global.orders[sell_box.unit_number] = order
+    local player = game.get_player(event.player_index)
+    if not (player and player.valid) then return end
+
+    local element = event.element
+    local element_name = element.name
+    if element_name == "buy-box-item" then
+        orders[open_order[player.index].entity.unit_number].name = element.elem_value
+    elseif element_name == "sell-box-item" then
+        orders[open_order[player.index].entity.unit_number].name = element.elem_value
     end
 end
 
 function GUIClick(event)
     local player = GetEventPlayer(event)
-    local elem = event.element
-    local order = global.open_order[player.index]
-    if order ~= nil and order.name ~= nil then
-        local result = nil
-        if elem.name == "buy-button-1" then
-            result = Transaction(order.entity, player, order, 1)
-        elseif elem.name == "buy-button-all" then
-            local max_count = order.entity.get_item_count(order.name)
-            result = Transaction(order.entity, player, order, max_count)
-        elseif elem.name == "sell-button-1" then
-            result = Transaction(player, order.entity, order, 1)
-        elseif elem.name == "sell-button-all" then
-            local max_count = order.entity.get_item_count(order.name)
-            local count = game.item_prototypes[order.name].stack_size - max_count
-            count = math.min( player.get_item_count(order.name), count )
-            result = Transaction(player, order.entity, order, count)
+    local element = event.element
+    local order = open_order[player.index]
+    if order == nil then return end
+    local order_name = order.name
+    if order_name == nil then return end
+
+    local result = nil
+    local element_name = element.name
+    if element_name == "buy-button-1" then
+        result = Transaction(order.entity, player, order, 1)
+    elseif element_name == "buy-button-all" then
+        local max_count = order.entity.get_item_count(order_name)
+        result = Transaction(order.entity, player, order, max_count)
+    elseif element_name == "sell-button-1" then
+        result = Transaction(player, order.entity, order, 1)
+    elseif element_name == "sell-button-all" then
+        local entity = order.entity
+        local max_count = entity.get_item_count(order_name)
+        local count = game.item_prototypes[order_name].stack_size - max_count
+        count = math.min( player.get_item_count(order_name), count )
+        result = Transaction(player, entity, order, count)
+    end
+    if result and not result.success then
+        if result.no_items_in_source then
+            player.print{"message.none-available"}
         end
-        if result and not result.success then
-            if result.no_items_in_source then
-                player.print{"message.none-available"}
-            end
-            if result.no_xfer_credits then
-                player.print{"message.no-credits"}
-            end
-            if result.no_xfer_stack then
-                player.print{"message.no-room"}
-            end
+        if result.no_xfer_credits then
+            player.print{"message.no-credits"}
+        end
+        if result.no_xfer_stack then
+            player.print{"message.no-room"}
         end
     end
 end
 
-function GiveCreditsCommand(event)
-    local player = GetEventPlayer(event)
-    if not event.parameter then return end
-    local params = {}
-    for param in string.gmatch(event.parameter, "%g+") do
-        table.insert(params, param)
-    end
-    local other_force_name = params[1]
-    local amount = tonumber(params[2]) or 0
-    if CanTransferCredits(player, amount) then
-        TransferCredits(player.force, {name = other_force_name}, amount)
-    else
-        player.print{"message.no-credits"}
+local function on_runtime_mod_setting_changed(event)
+    if event.setting_type ~= "runtime-global" then return end
+
+    local setting_name = event.setting
+    if setting_name == "credit-mint-speed" then
+        minting_speed = settings.global[setting_name].value
+    elseif setting_name == "starting-credits" then
+        starting_credits = settings.global[setting_name].value
     end
 end
 
-function CheatCredits(event)
-    local player = GetEventPlayer(event)
-    if not event.parameter then return end
-    local amount = tonumber(event.parameter) or 0
-    AddCredits(player.force, amount)
-end
+-- function GiveCreditsCommand(event)
+--     local player = GetEventPlayer(event)
+--     if not event.parameter then return end
+--     local params = {}
+--     for param in string.gmatch(event.parameter, "%g+") do
+--         params[#params+1] = param
+--     end
+--     local other_force_name = params[1]
+--     local amount = tonumber(params[2]) or 0
+--     if CanTransferCredits(player, amount) then
+--         TransferCredits(player.force, {name = other_force_name}, amount)
+--     else
+--         player.print{"message.no-credits"}
+--     end
+-- end
 
-script.on_init(Init)
-script.on_configuration_changed(function ()
-	CheckGlobalData()
-	for _, player in pairs(game.connected_players) do
+-- function CheatCredits(event)
+--     local player = GetEventPlayer(event)
+--     if not event.parameter then return end
+--     local amount = tonumber(event.parameter) or 0
+--     AddCredits(player.force, amount)
+-- end
+
+local function on_configuration_changed(event)
+    local specializations = global.specializations
+    for force_name, force in pairs(game.forces) do
+        local recipes = force.recipes
+        for spec_name, _force_name in pairs(specializations)  do
+            if _force_name == force_name then
+                recipes[spec_name].enabled = true
+            end
+        end
+    end
+
+
+    local mod_changes = event.mod_changes["m-multiplayertrading"]
+    if not (mod_changes and mod_changes.old_version) then return end
+
+    CheckGlobalData()
+    for _, player in pairs(game.connected_players) do
         AddCreditsGUI(player)
     end
-end)
-script.on_event(defines.events.on_tick, OnTick)
-script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, function(event)
-    local can_build = true
-    if settings.startup['land-claim'].value then
-        can_build = DestroyInvalidEntities(event)
+
+    local version = tonumber(string.gmatch(mod_changes.old_version, "%d+.%d+")())
+    if version < 0.7 then
+        -- Check unit numbers
+        for _unit_number, entity in pairs(sell_boxes) do
+            local unit_number = entity.unit_number
+            if _unit_number ~= unit_number then
+                credit_mints[unit_number] = credit_mints[_unit_number]
+                credit_mints[_unit_number] = nil
+            end
+        end
+        for _unit_number, data in pairs(credit_mints) do
+            local unit_number = data.entity.unit_number
+            if _unit_number ~= unit_number then -- TODO: check, is data.entity has weird characters?
+                credit_mints[unit_number] = table.deepcopy(credit_mints[_unit_number])
+                credit_mints[_unit_number] = nil
+            end
+        end
     end
-    if can_build then
-        DisallowElectricityTheft(event)
-        HandleEntityBuild(event)
-    end
-end)
-script.on_event(
-    defines.events.on_entity_died,
-    HandleEntityDied,
-    {{filter = "type", type = "electric-pole"}}
-)
+end
+
+
+script.on_init(on_init)
+script.on_load(on_load)
+script.on_configuration_changed(on_configuration_changed)
+
+
+if IS_LAND_CLAIM then
+    script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, function(event)
+        local can_build = DestroyInvalidEntities(event)
+        if can_build then
+            DisallowElectricityTheft(event)
+            HandleEntityBuild(event)
+        end
+    end)
+end
+
 script.on_event(
     defines.events.on_player_mined_entity,
-    HandleEntityDied,
-    {{filter = "type", type = "electric-pole"}}
+    HandleEntityMined,
+    {
+        {filter = "type", type = "electric-pole", mode = "or"},
+        {filter = "name", name = "sell-box", mode = "or"},
+        {filter = "name", name = "buy-box", mode = "or"},
+        {filter = "name", name = "credit-mint", mode = "or"}
+    }
 )
-local function on_player_created(event)
-	game.get_player(event.player_index).insert(START_ITEMS)
+
+do
+    local filters = {
+        {filter = "name", name = "sell-box", mode = "or"},
+        {filter = "name", name = "buy-box", mode = "or"},
+        {filter = "name", name = "credit-mint", mode = "or"}
+    }
+    script.on_event(
+        defines.events.on_entity_died,
+        HandleEntityDied,
+        filters
+    )
+    script.on_event(
+        defines.events.on_robot_mined_entity,
+        HandleEntityDied,
+        filters
+    )
+    script.on_event(
+        defines.events.script_raised_destroy,
+        HandleEntityDied,
+        filters
+    )
 end
-script.on_event(defines.events.on_player_created, function(event)
-	pcall(on_player_created, event)
-end)
-local function on_player_joined(event)
-	AddCreditsGUI(game.get_player(event.player_index))
+
+do
+    local function on_player_created(event)
+        game.get_player(event.player_index).insert(START_ITEMS)
+    end
+    script.on_event(defines.events.on_player_created, function(event)
+        pcall(on_player_created, event)
+    end)
 end
-script.on_event(defines.events.on_player_joined_game, function(event)
-	pcall(on_player_joined, event)
-end)
-local function on_player_left_game(event)
-	game.get_player(event.player_index).gui.left.credits.destroy()
+
+do
+    local function on_player_joined(event)
+        AddCreditsGUI(game.get_player(event.player_index))
+    end
+    script.on_event(defines.events.on_player_joined_game, function(event)
+        pcall(on_player_joined, event)
+    end)
 end
-script.on_event(defines.events.on_player_left_game, function(event)
-	pcall(on_player_left_game, event)
-end)
+
+do
+    local function on_player_left_game(event)
+        game.get_player(event.player_index).gui.left.credits.destroy()
+    end
+    script.on_event(defines.events.on_player_left_game, function(event)
+        pcall(on_player_left_game, event)
+    end)
+end
+
+
 script.on_event("sellbox-gui-open", function(event)
-    local player = GetEventPlayer(event)
+    local player = game.get_player(event.player_index)
+    if not (player and player.valid) then return end
     local entity = player.selected
-    if entity and (entity.name == "sell-box" or entity.name == "buy-box") then
+    if not (entity and entity.valid) then return end
+
+    local entity_name = entity.name
+    if entity and (entity_name == "sell-box" or entity_name == "buy-box") then
         SellOrBuyGUIClose(event)
-        SellboxGUIOpen(event)
-    elseif entity and entity.name == "electric-trading-station" then
+        SellboxGUIOpen(player, entity)
+    elseif entity and entity_name == "electric-trading-station" then
         ElectricTradingStationGUIClose(event)
         ElectricTradingStationGUIOpen(event)
     else
@@ -550,17 +665,23 @@ script.on_event("sellbox-gui-open", function(event)
         ElectricTradingStationGUIClose(event)
     end
 end)
+
 script.on_event("sellbox-gui-close", function(event)
     SellOrBuyGUIClose(event)
     ElectricTradingStationGUIClose(event)
 end)
+
 if settings.startup['specializations'].value then
-    script.on_event("specialization-gui", SpecializationGUI)
+    script.on_event("specialization-gui", function(event)
+        pcall(SpecializationGUI, game.get_player(event.player_index))
+    end)
 end
+
 script.on_event(defines.events.on_gui_text_changed, GUITextChanged)
 script.on_event(defines.events.on_gui_elem_changed, GUIElemChanged)
 script.on_event(defines.events.on_gui_click, GUIClick)
 script.on_event(defines.events.on_force_created, ForceCreated)
+script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 if settings.startup['early-bird-research'].value then
     script.on_event(defines.events.on_research_finished, ResearchCompleted)
 end
@@ -571,25 +692,25 @@ remote.add_interface("multiplayer-trading", {
         AddCredits(force, amount)
     end,
     ["get-money"] = function(force)
-        return global.credits[force.name]
+        return credits[force.name]
     end
 })
 
 script.on_nth_tick(60, function()
-    local stations = global.electric_trading_stations
-    for unit_number, electric_trading_station in pairs(stations) do
+    for unit_number, electric_trading_station in pairs(electric_trading_stations) do -- TODO: change
         if not electric_trading_station.entity.valid then
-            stations[unit_number] = nil
+            electric_trading_stations[unit_number] = nil
         end
     end
-    UpdateElectricTradingStations(stations)
+    UpdateElectricTradingStations(electric_trading_stations)
 end)
+
+script.on_nth_tick(15, check_boxes)
 
 -- TODO: optimize
 script.on_nth_tick(120, function()
-    local forces_credits = global.credits
     for _, player in pairs(game.connected_players) do
-        player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, floor(forces_credits[player.force.name])}
+        player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, floor(credits[player.force.name])}
     end
 end)
 

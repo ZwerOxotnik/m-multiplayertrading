@@ -562,7 +562,10 @@ local function on_configuration_changed(event)
         for _unit_number, data in pairs(credit_mints) do
             local unit_number = data.entity.unit_number
             if _unit_number ~= unit_number then -- TODO: check, is data.entity has weird characters?
-                credit_mints[unit_number] = table.deepcopy(credit_mints[_unit_number])
+                credit_mints[unit_number] = {
+                    ['entity'] = credit_mints[_unit_number].entity,
+                    ['progress'] = credit_mints[_unit_number].progress
+                }
                 credit_mints[_unit_number] = nil
             end
         end

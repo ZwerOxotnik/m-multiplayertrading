@@ -54,6 +54,7 @@ function UpdateSpecializations()
     end
 
     for force_name, force in pairs(game.forces) do
+        local recipes = force.recipes
         for _, spec in pairs(SPECIALIZATIONS) do
 			local spec_name = spec.name
             if specializations[spec_name] == nil then
@@ -64,7 +65,7 @@ function UpdateSpecializations()
                 last_stat.rate = production_rate
                 if production_rate >= spec.requirement.production then
                     specializations[spec_name] = force_name
-                    force.recipes[spec_name].enabled = true
+                    recipes[spec_name].enabled = true
 					local item_name = {GetSpecializationItemNameLocale(spec)}
                     force.print({
                         "message.specialization-unlock",
@@ -102,10 +103,11 @@ function SpecializationGUI( event )
             if force_name == nil then
                 style = "bold_label"
                 local requirement = row.add{type = "flow", direction = "vertical"}
-                local caption = "Available (produce " .. tostring(spec.requirement.production) .. "/min to unlock)"
+				local production = spec.requirement.production
+                local caption = "Available (produce " .. tostring(production) .. "/min to unlock)"
                 requirement.add{type = "label", caption = caption, style = style}
                 local stat = GetLastStatForSpecialization(spec, player.force)
-                local progress = stat.rate / spec.requirement.production
+                local progress = stat.rate / production
                 requirement.add{type = "progressbar", name = "progress", value = progress}
             else
                 if force_name == player.force.name then

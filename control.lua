@@ -14,22 +14,22 @@ local START_ITEMS = {name = "small-electric-pole", count = 10}
 
 
 PLACE_NOMANSLAND_ITEMS = {
-	['locomotive'] = true,
-	['cargo-wagon'] = true,
-	['fluid-wagon'] = true,
-	['artillery-wagon'] = true,
-	['tank'] = true,
-	['car'] = true,
+    ['locomotive'] = true,
+    ['cargo-wagon'] = true,
+    ['fluid-wagon'] = true,
+    ['artillery-wagon'] = true,
+    ['tank'] = true,
+    ['car'] = true,
     ['player'] = true,
     ['transport-belt'] = true,
-	['fast-transport-belt'] = true,
-	['express-transport-belt'] = true,
-	['pipe'] = true,
-	['straight-rail'] = true,
-	['curved-rail'] = true,
-	['small-electric-pole'] = true,
-	['medium-electric-pole'] = true,
-	['big-electric-pole'] = true,
+    ['fast-transport-belt'] = true,
+    ['express-transport-belt'] = true,
+    ['pipe'] = true,
+    ['straight-rail'] = true,
+    ['curved-rail'] = true,
+    ['small-electric-pole'] = true,
+    ['medium-electric-pole'] = true,
+    ['big-electric-pole'] = true,
     ['substation'] = true,
     ['sell-box'] = true,
     ['buy-box'] = true,
@@ -57,6 +57,16 @@ local function CheckGlobalData()
     global.early_bird_tech = global.early_bird_tech or {}
     global.open_order = global.open_order or {}
     global.electric_trading_stations =  global.electric_trading_stations or {}
+
+    local specializations = global.specializations
+    for force_name, force in pairs(game.forces) do
+        local recipes = force.recipes
+        for spec_name, _force_name in pairs(specializations)  do
+            if _force_name == force_name then
+                recipes[spec_name].enabled = true
+            end
+        end
+    end
 end
 
 local function Init()
@@ -65,8 +75,8 @@ local function Init()
         ForceCreated({force=force})
     end
     for _, player in pairs(game.players) do
-		player.insert(START_ITEMS)
-		AddCreditsGUI(player)
+        player.insert(START_ITEMS)
+        AddCreditsGUI(player)
     end
 end
 
@@ -89,16 +99,16 @@ function ForceCreated(event)
 end
 
 do
-	local label = {type = "label", name = "credits", caption = {"multiplayertrading.gui.credits"}, style = "caption_label"}
-	function AddCreditsGUI(player)
-		local gui = player.gui
-		if gui.left['credits'] then
-			gui.left['credits'].destroy()
-		end
-		if not gui.top['credits'] then
-			gui.top.add(label)
-		end
-	end
+    local label = {type = "label", name = "credits", caption = {"multiplayertrading.gui.credits"}, style = "caption_label"}
+    function AddCreditsGUI(player)
+        local gui = player.gui
+        if gui.left['credits'] then
+            gui.left['credits'].destroy()
+        end
+        if not gui.top['credits'] then
+            gui.top.add(label)
+        end
+    end
 end
 
 function ResearchCompleted(event)
@@ -200,18 +210,18 @@ end
 
 -- TODO: OPTIMIZE!
 function OnTick()
-	local sell_boxes = global.sell_boxes
+    local sell_boxes = global.sell_boxes
     for i=#sell_boxes, 1, -1 do
         if not sell_boxes[i].valid then
             table.remove( sell_boxes, i )
         end
     end
 
-	local orders = global.orders
+    local orders = global.orders
     for _, sell_box in pairs(global.sell_boxes) do
         local sell_order = orders[sell_box.unit_number]
-		if sell_order then -- it seems wrong
-			local sell_order_name = sell_order.name
+        if sell_order then -- it seems wrong
+            local sell_order_name = sell_order.name
             if sell_order_name then
                 local item_count = sell_box.get_item_count(sell_order_name)
                 if item_count > 0 then
@@ -234,9 +244,9 @@ function OnTick()
                     end
                 end
             end
-		end
+        end
     end
-	local credit_mints = global.credit_mints
+    local credit_mints = global.credit_mints
     for i=#credit_mints, 1, -1 do
         if not credit_mints[i].entity.valid then
             table.remove( credit_mints, i )
@@ -244,14 +254,14 @@ function OnTick()
     end
     local minting_speed = settings.global['credit-mint-speed'].value
     for _, credit_mint in pairs(credit_mints) do
-		local entity = credit_mint.entity
+        local entity = credit_mint.entity
         local energy = entity.energy / entity.electric_buffer_size
         local progress = credit_mint.progress + (energy * minting_speed)
         if progress >= 1 then
             credit_mint.progress = 0
             AddCredits(entity.force, 1)
-		else
-			credit_mint.progress = progress
+        else
+            credit_mint.progress = progress
         end
     end
 end
@@ -282,7 +292,7 @@ end
 ---@return table
 function Transaction(source_inventory, destination_inventory, order, count)
     if order and source_inventory and destination_inventory and count > 0 then
-		local order_name = order.name
+        local order_name = order.name
         local item_stack = {name = order_name, count = count}
         local cost = order.value * item_stack.count
         local source_has_items = source_inventory.get_item_count(order_name) > 0 -- TODO: change
@@ -498,14 +508,14 @@ script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_e
     end
 end)
 script.on_event(
-	defines.events.on_entity_died,
-	HandleEntityDied,
-	{{filter = "type", type = "electric-pole"}}
+    defines.events.on_entity_died,
+    HandleEntityDied,
+    {{filter = "type", type = "electric-pole"}}
 )
 script.on_event(
-	defines.events.on_player_mined_entity,
-	HandleEntityDied,
-	{{filter = "type", type = "electric-pole"}}
+    defines.events.on_player_mined_entity,
+    HandleEntityDied,
+    {{filter = "type", type = "electric-pole"}}
 )
 script.on_event(defines.events.on_player_created, PlayerCreated)
 script.on_event("sellbox-gui-open", function(event)
@@ -548,7 +558,7 @@ remote.add_interface("multiplayer-trading", {
 })
 
 script.on_nth_tick(60, function()
-	local stations = global.electric_trading_stations
+    local stations = global.electric_trading_stations
     for unit_number, electric_trading_station in pairs(stations) do
         if not electric_trading_station.entity.valid then
             stations[unit_number] = nil
@@ -559,10 +569,10 @@ end)
 
 -- TODO: optimize
 script.on_nth_tick(120, function()
-	local forces_credits = global.credits
-	for _, player in pairs(game.connected_players) do
-		player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, floor(forces_credits[player.force.name])}
-	end
+    local forces_credits = global.credits
+    for _, player in pairs(game.connected_players) do
+        player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, floor(forces_credits[player.force.name])}
+    end
 end)
 
 if settings.startup['specializations'].value == true then

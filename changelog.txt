@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.6.4
+Date: 24. 08. 2021
+  Bugfixes:
+    - Trying to fix recipes, but it doesn't help in all cases (see https://mods.factorio.com/mod/m-multiplayertrading/discussion/61249199a4ae4bbc1a32883c )
+---------------------------------------------------------------------------------------------------
 Version: 0.6.3
 Date: 23. 08. 2021
   Bugfixes:

@@ -213,26 +213,34 @@ function Area(position, radius)
     }
 end
 
-local function HandleEntityBuild(entity)
-    local entity_name = entity.name
-    if entity_name == "sell-box" then
+local special_builds = {
+	["sell-box"] = function(entity)
         entity.operable = false
         sell_boxes[entity.unit_number] = entity
-    elseif entity_name == "buy-box" then
+	end,
+	["buy-box"] = function(entity)
         entity.operable = false
-        sell_boxes[entity.unit_number] = entity -- this seems weird
-    elseif entity_name == "credit-mint" then
+        sell_boxes[entity.unit_number] = entity
+	end,
+	["credit-mint"] = function(entity)
         credit_mints[entity.unit_number] = {
             ['entity'] = entity,
             ['progress'] = 0
         }
-    elseif entity_name == "electric-trading-station" then
+	end,
+	["electric-trading-station"] = function(entity)
         electric_trading_stations[entity.unit_number] = {
             ['entity'] = entity,
             sell_price = 1,
             buy_bid = 1
         }
-    end
+	end,
+}
+local function HandleEntityBuild(entity)
+    local f = special_builds[entity.name]
+	if f then
+		f(entity)
+	end
 end
 
 local function HandleEntityMined(event)

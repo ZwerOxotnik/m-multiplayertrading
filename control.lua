@@ -9,6 +9,7 @@ require "systems/electric-trading-station"
 
 --#region Constants
 local floor = math.floor
+local max = math.max
 local START_ITEMS = {name = "small-electric-pole", count = 10}
 local IS_LAND_CLAIM = settings.startup['land-claim'].value
 ---#endregion
@@ -124,6 +125,16 @@ local function CheckGlobalData()
             orders[unit_number] = nil
         end
     end
+    for player_index, _ in pairs(open_order) do
+        if game.get_player(player_index) == nil then
+			open_order[player_index] = nil
+		end
+    end
+    for force_name, _ in pairs(credits) do
+        if game.forces[force_name] == nil then
+			credits[force_name] = nil
+		end
+    end
 end
 
 local function on_init()
@@ -155,6 +166,9 @@ function ForceCreated(event)
     end
 end
 
+local function on_player_removed(event)
+	open_order[event.player_index] = nil
+end
 
 function ResearchCompleted(event)
     local research = event.research
@@ -467,9 +481,9 @@ function GUITextChanged(event)
 
     local element_name = element.name
     if element_name == "buy-box-value" then
-        orders[open_order[player.index].entity.unit_number].value = tonumber(element.text) or 1
+        orders[open_order[player.index].entity.unit_number].value = max(tonumber(element.text) or 1, 1)
     elseif element_name == "sell-box-value" then
-        orders[open_order[player.index].entity.unit_number].value = tonumber(element.text) or 1
+        orders[open_order[player.index].entity.unit_number].value = max(tonumber(element.text) or 1, 1)
     end
 end
 
@@ -771,6 +785,7 @@ if settings.startup['specializations'].value then
     end)
 end
 
+script.on_event(defines.events.on_player_removed, on_player_removed)
 script.on_event(defines.events.on_gui_text_changed, GUITextChanged)
 script.on_event(defines.events.on_gui_elem_changed, GUIElemChanged)
 script.on_event(defines.events.on_gui_click, GUIClick)

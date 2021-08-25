@@ -303,9 +303,9 @@ local function check_credit_mints()
         local entity = credit_mint.entity
         local energy = entity.energy / entity.electric_buffer_size
         local progress = credit_mint.progress + (energy * minting_speed)
-        if progress >= 0.09 then
+        if progress >= 0.90 then
             credit_mint.progress = 0
-            AddCredits(entity.force, 1)
+            AddCredits(entity.force, 10)
         else
             credit_mint.progress = progress
         end

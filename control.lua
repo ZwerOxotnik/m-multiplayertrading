@@ -106,11 +106,17 @@ local function CheckGlobalData()
     for unit_number, entity in pairs(sell_boxes) do
         if not entity.valid then
             sell_boxes[unit_number] = nil
+            orders[unit_number] = nil
         end
     end
     for unit_number, data in pairs(credit_mints) do
         if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
             credit_mints[unit_number] = nil
+        end
+    end
+    for unit_number, data in pairs(electric_trading_stations) do
+        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
+            electric_trading_stations[unit_number] = nil
         end
     end
 end
@@ -248,35 +254,37 @@ local function HandleEntityMined(event)
     local entity = event.entity
     local entity_name = entity.name
     if entity.type == "electric-pole" then
-        if IS_LAND_CLAIM then
-            ClaimPoleRemoved(event.entity)
-        end
+        ClaimPoleRemoved(entity)
         return
     elseif entity_name == "credit-mint" then
         credit_mints[entity.unit_number] = nil
     elseif entity_name == "electric-trading-station" then
         electric_trading_stations[entity.unit_number] = nil
     else -- "buy-box", "sell-box"
-        sell_boxes[entity.unit_number] = nil
+        local unit_number = entity.unit_number
+        sell_boxes[unit_number] = nil
+        orders[unit_number] = nil
     end
 end
 
 local function HandleEntityDied(event)
     local entity = event.entity
     local entity_name = entity.name
-    if entity.name == "credit-mint" then
+    if entity_name == "credit-mint" then
         credit_mints[entity.unit_number] = nil
     elseif entity_name == "electric-trading-station" then
         electric_trading_stations[entity.unit_number] = nil
     else -- "buy-box", "sell-box"
-        sell_boxes[entity.unit_number] = nil
+        local unit_number = entity.unit_number
+        sell_boxes[unit_number] = nil
+        orders[unit_number] = nil
     end
 end
 
 -- TODO: OPTIMIZE!
 local function check_boxes()
-    for _, sell_box in pairs(sell_boxes) do
-        local sell_order = orders[sell_box.unit_number]
+    for unit_number, sell_box in pairs(sell_boxes) do
+        local sell_order = orders[unit_number]
         if sell_order then -- it seems wrong
             local sell_order_name = sell_order.name
             if sell_order_name then
@@ -547,6 +555,8 @@ end
 -- end
 
 local function on_configuration_changed(event)
+    CheckGlobalData()
+
     local specializations = global.specializations
     for force_name, force in pairs(game.forces) do
         local recipes = force.recipes
@@ -561,7 +571,6 @@ local function on_configuration_changed(event)
     local mod_changes = event.mod_changes["m-multiplayertrading"]
     if not (mod_changes and mod_changes.old_version) then return end
 
-    CheckGlobalData()
     for _, player in pairs(game.connected_players) do
         AddCreditsGUI(player)
     end
@@ -587,6 +596,13 @@ local function on_configuration_changed(event)
             if _unit_number ~= unit_number then
                 sell_boxes[unit_number] = sell_boxes[_unit_number]
                 sell_boxes[_unit_number] = nil
+                if orders[_unit_number] then
+                    orders[unit_number] = {
+                        value = orders[_unit_number].value,
+                        name = orders[_unit_number].name
+                    }
+                    orders[_unit_number] = nil
+                end
             end
         end
         for _unit_number, data in pairs(credit_mints) do
@@ -647,17 +663,19 @@ script.on_event(defines.events.on_robot_built_entity, function(event)
 end)
 
 
-script.on_event(
-    defines.events.on_player_mined_entity,
-    HandleEntityMined,
-    {
-        {filter = "type", type = "electric-pole", mode = "or"},
-        {filter = "name", name = "sell-box", mode = "or"},
-        {filter = "name", name = "buy-box", mode = "or"},
-        {filter = "name", name = "credit-mint", mode = "or"},
-        {filter = "name", name = "electric-trading-station", mode = "or"}
-    }
-)
+if IS_LAND_CLAIM then
+    script.on_event(
+        defines.events.on_player_mined_entity,
+        HandleEntityMined,
+        {
+            {filter = "type", type = "electric-pole", mode = "or"},
+            {filter = "name", name = "sell-box", mode = "or"},
+            {filter = "name", name = "buy-box", mode = "or"},
+            {filter = "name", name = "credit-mint", mode = "or"},
+            {filter = "name", name = "electric-trading-station", mode = "or"}
+        }
+    )
+end
 
 do
     local filters = {
@@ -681,6 +699,13 @@ do
         HandleEntityDied,
         filters
     )
+    if not IS_LAND_CLAIM then
+        script.on_event(
+            defines.events.on_player_mined_entity,
+            HandleEntityDied,
+            filters
+        )
+    end
 end
 
 do

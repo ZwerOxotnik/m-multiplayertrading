@@ -119,6 +119,11 @@ local function CheckGlobalData()
             electric_trading_stations[unit_number] = nil
         end
     end
+    for unit_number, data in pairs(orders) do
+        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
+            orders[unit_number] = nil
+        end
+    end
 end
 
 local function on_init()
@@ -388,12 +393,12 @@ function SellboxGUIOpen(player, entity)
             end
             local order = orders[unit_number]
             if not order then
-                order = {
+                orders[unit_number] = {
                     type = "sell",
                     ['entity'] = entity,
                     value = 1
                 }
-                orders[unit_number] = order
+                order = orders[unit_number]
             end
             item_picker.elem_value = order.name
             open_order[player_index] = order

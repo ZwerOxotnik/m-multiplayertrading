@@ -47,10 +47,8 @@ function ClaimPoleRemoved(entity)
     end
 end
 
-function DestroyInvalidEntities(event)
-    local entity = event.created_entity
-    local player = GetEventPlayer(event)
-    local instigatingForce = GetEventForce(event)
+function DestroyInvalidEntities(entity, player)
+    local instigatingForce = entity.force
     if instigatingForce then
         -- Check if land is claimed.
         local claimedLand = GetClaimedLand(entity)

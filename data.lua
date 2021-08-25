@@ -130,10 +130,11 @@ local electricTradingStation = {
     flags = {"placeable-neutral", "player-creation"},
     minable = {hardness = 0.2, mining_time = 0.5, result = "electric-trading-station"},
     max_health = 100,
-    corpse = "medium-remnants",
-    collision_mask = {"ghost-layer"},
-    collision_box = {{-0.4, -0.9}, {0.4, 0.9}},
-    selection_box = {{-0.5, -1}, {0.5, 1}},
+    corpse = "accumulator-remnants",
+    dying_explosion = "accumulator-explosion",
+    collision_box = {{-0.9, -0.9}, {0.9, 0.9}},
+    selection_box = {{-1, -1}, {1, 1}},
+    drawing_box = {{-1, -1.5}, {1, 1}},
     energy_source =
     {
         type = "electric",

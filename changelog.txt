@@ -1,4 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.0
+Date: 25. 08. 2021
+  Changes:
+    - Changed HUD of credits
+    - Optimized some events!
+  Bugfixes:
+    - Fixed Electric Trading Stations
+    - Fixed Credit Mints
+    - Fixed some data (rebuild if something wrong)
+---------------------------------------------------------------------------------------------------
 Version: 0.7.2
 Date: 24. 08. 2021
   Changes:

@@ -65,6 +65,7 @@ POLES = {
     'substation'
 }
 
+
 local function link_data()
     credit_mints = global.credit_mints
     electric_trading_stations = global.electric_trading_stations
@@ -74,6 +75,19 @@ local function link_data()
     early_bird_tech = global.early_bird_tech
     credits = global.credits
 end
+
+
+local credits_label = {type = "label", name = "credits", style = "caption_label"}
+local function AddCreditsGUI(player)
+    local gui = player.gui
+    if gui.left['credits'] then
+        gui.left['credits'].destroy()
+    end
+    if not gui.top['credits'] then
+        gui.top.add(credits_label)
+    end
+end
+
 
 local function CheckGlobalData()
     global.sell_boxes = global.sell_boxes or {}
@@ -129,18 +143,6 @@ function ForceCreated(event)
     end
 end
 
-do
-    local label = {type = "label", name = "credits", caption = {"multiplayertrading.gui.credits"}, style = "caption_label"}
-    function AddCreditsGUI(player)
-        local gui = player.gui
-        if gui.left['credits'] then
-            gui.left['credits'].destroy()
-        end
-        if not gui.top['credits'] then
-            gui.top.add(label)
-        end
-    end
-end
 
 function ResearchCompleted(event)
     local research = event.research
@@ -211,15 +213,7 @@ function Area(position, radius)
     }
 end
 
-function HandleEntityBuild(event)
-    local entity = event.created_entity
-    if not entity.valid then return end
-
-    if IS_LAND_CLAIM and entity.type == "electric-pole" then
-        ClaimPoleBuilt(entity)
-        return
-    end
-
+local function HandleEntityBuild(entity)
     local entity_name = entity.name
     if entity_name == "sell-box" then
         entity.operable = false
@@ -232,8 +226,12 @@ function HandleEntityBuild(event)
             ['entity'] = entity,
             ['progress'] = 0
         }
-    elseif entity.name == "electric-trading-station" then
-        ElectricTradingStationBuilt(entity)
+    elseif entity_name == "electric-trading-station" then
+        electric_trading_stations[entity.unit_number] = {
+            ['entity'] = entity,
+            sell_price = 1,
+            buy_bid = 1
+        }
     end
 end
 
@@ -247,6 +245,8 @@ local function HandleEntityMined(event)
         return
     elseif entity_name == "credit-mint" then
         credit_mints[entity.unit_number] = nil
+    elseif entity_name == "electric-trading-station" then
+        electric_trading_stations[entity.unit_number] = nil
     else -- "buy-box", "sell-box"
         sell_boxes[entity.unit_number] = nil
     end
@@ -254,8 +254,11 @@ end
 
 local function HandleEntityDied(event)
     local entity = event.entity
+    local entity_name = entity.name
     if entity.name == "credit-mint" then
         credit_mints[entity.unit_number] = nil
+    elseif entity_name == "electric-trading-station" then
+        electric_trading_stations[entity.unit_number] = nil
     else -- "buy-box", "sell-box"
         sell_boxes[entity.unit_number] = nil
     end
@@ -284,11 +287,14 @@ local function check_boxes()
             end
         end
     end
-    for _, credit_mint in pairs(credit_mints) do --TODO: optimize
+end
+
+local function check_credit_mints()
+    for _, credit_mint in pairs(credit_mints) do
         local entity = credit_mint.entity
         local energy = entity.energy / entity.electric_buffer_size
         local progress = credit_mint.progress + (energy * minting_speed)
-        if progress >= 1 then
+        if progress >= 0.09 then
             credit_mint.progress = 0
             AddCredits(entity.force, 1)
         else
@@ -550,13 +556,26 @@ local function on_configuration_changed(event)
     end
 
     local version = tonumber(string.gmatch(mod_changes.old_version, "%d+.%d+")())
+    if version < 0.8 then
+        for _unit_number, data in pairs(electric_trading_stations) do
+            local unit_number = data.entity.unit_number
+            if _unit_number ~= unit_number then -- TODO: check, is data.entity has weird characters?
+                electric_trading_stations[unit_number] = {
+                    ['entity'] = electric_trading_stations[_unit_number].entity,
+                    sell_price = electric_trading_stations[_unit_number].sell_price,
+                    buy_bid = electric_trading_stations[_unit_number].buy_bid
+                }
+                electric_trading_stations[_unit_number] = nil
+            end
+        end
+    end
     if version < 0.7 then
         -- Check unit numbers
         for _unit_number, entity in pairs(sell_boxes) do
             local unit_number = entity.unit_number
             if _unit_number ~= unit_number then
-                credit_mints[unit_number] = credit_mints[_unit_number]
-                credit_mints[_unit_number] = nil
+                sell_boxes[unit_number] = sell_boxes[_unit_number]
+                sell_boxes[_unit_number] = nil
             end
         end
         for _unit_number, data in pairs(credit_mints) do
@@ -578,15 +597,40 @@ script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 
 
-if IS_LAND_CLAIM then
-    script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, function(event)
-        local can_build = DestroyInvalidEntities(event)
-        if can_build then
-            DisallowElectricityTheft(event)
-            HandleEntityBuild(event)
+script.on_event(defines.events.on_built_entity, function(event)
+    local player = game.get_player(event.player_index)
+    local entity = event.created_entity
+    local can_build = true
+    if IS_LAND_CLAIM then
+        can_build = DestroyInvalidEntities(entity, player)
+    end
+    if can_build then
+        if entity.type == "electric-pole" then
+            local force = player.force
+            DisallowElectricityTheft(entity, force)
+            ClaimPoleBuilt(entity)
+        else
+            HandleEntityBuild(entity)
         end
-    end)
-end
+    end
+end)
+script.on_event(defines.events.on_robot_built_entity, function(event)
+    local entity = event.created_entity
+    local can_build = true
+    if IS_LAND_CLAIM then
+        can_build = DestroyInvalidEntities(entity)
+    end
+    if can_build then
+        if entity.type == "electric-pole" then
+            local force = event.robot.force
+            DisallowElectricityTheft(entity, force)
+            ClaimPoleBuilt(entity)
+        else
+            HandleEntityBuild(entity)
+        end
+    end
+end)
+
 
 script.on_event(
     defines.events.on_player_mined_entity,
@@ -595,7 +639,8 @@ script.on_event(
         {filter = "type", type = "electric-pole", mode = "or"},
         {filter = "name", name = "sell-box", mode = "or"},
         {filter = "name", name = "buy-box", mode = "or"},
-        {filter = "name", name = "credit-mint", mode = "or"}
+        {filter = "name", name = "credit-mint", mode = "or"},
+        {filter = "name", name = "electric-trading-station", mode = "or"}
     }
 )
 
@@ -603,7 +648,8 @@ do
     local filters = {
         {filter = "name", name = "sell-box", mode = "or"},
         {filter = "name", name = "buy-box", mode = "or"},
-        {filter = "name", name = "credit-mint", mode = "or"}
+        {filter = "name", name = "credit-mint", mode = "or"},
+        {filter = "name", name = "electric-trading-station", mode = "or"}
     }
     script.on_event(
         defines.events.on_entity_died,
@@ -700,20 +746,16 @@ remote.add_interface("multiplayer-trading", {
 })
 
 script.on_nth_tick(60, function()
-    for unit_number, electric_trading_station in pairs(electric_trading_stations) do -- TODO: change
-        if not electric_trading_station.entity.valid then
-            electric_trading_stations[unit_number] = nil
-        end
-    end
     UpdateElectricTradingStations(electric_trading_stations)
 end)
 
 script.on_nth_tick(15, check_boxes)
+script.on_nth_tick(900, check_credit_mints)
 
 -- TODO: optimize
 script.on_nth_tick(120, function()
     for _, player in pairs(game.connected_players) do
-        player.gui.top['credits'].caption = {"", {"multiplayertrading.gui.credits"}, {"colon"}, floor(credits[player.force.name])}
+        player.gui.top['credits'].caption = floor(credits[player.force.name]) .. '$'
     end
 end)
 

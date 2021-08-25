@@ -2,14 +2,6 @@ local max = math.max
 local floor = math.floor
 local abs = math.abs
 
-function ElectricTradingStationBuilt(entity)
-    global.electric_trading_stations[entity.unit_number] = {
-        ['entity'] = entity,
-        sell_price = 1,
-        buy_bid = 1
-    }
-end
-
 local function BalanceEnergy(source, destination)
     local from_energy = source.energy
     local to_energy = from_energy
@@ -95,39 +87,35 @@ local function BalanceEnergy(source, destination)
 end
 
 do
-    local insert = table.insert
     function UpdateElectricTradingStations(stations)
-        local visited = {}
         for _, electric_trading_station in pairs(stations) do
             local source = electric_trading_station.entity
-            if source.valid then
-                insert(visited, source)
-                local adjacent = source.surface.find_entities_filtered{
-                    area = Area(source.position, 3),
-                    name = "electric-trading-station"
-                }
-                local highest_bidder = nil
-                local highest_bid = 0
-                for _, dest in pairs(adjacent) do
+            local adjacent = source.surface.find_entities_filtered{
+                area = Area(source.position, 3),
+                name = "electric-trading-station"
+            }
+            local highest_bidder = nil
+            local highest_bid = 0
+            for _, dest in pairs(adjacent) do
+                if dest.force ~= source.force then
                     local dest_bid = stations[dest.unit_number].buy_bid
-                    local dest_full = (dest.energy >= 6000000)
-                    if dest.force ~= source.force and dest_bid > highest_bid and not dest_full then
-                        highest_bid = dest_bid
-                        highest_bidder = dest
+                    if dest_bid > highest_bid then
+                        if not (dest.energy >= 6000000) then
+                            highest_bid = dest_bid
+                            highest_bidder = dest
+                        end
                     end
                 end
-                if highest_bidder then
-                    BalanceEnergy(source, highest_bidder)
-                end
+            end
+            if highest_bidder then
+                BalanceEnergy(source, highest_bidder)
             end
         end
     end
 end
 
-function DisallowElectricityTheft(event)
-    local entity = event.created_entity
-    local instigatingForce = GetEventForce(event)
-    if instigatingForce and entity.type == "electric-pole" then
+function DisallowElectricityTheft(entity, instigatingForce)
+    if instigatingForce then
         for _, neighbour in pairs(entity.neighbours["copper"]) do
             if instigatingForce ~= neighbour.force and not instigatingForce.get_friend(neighbour.force) then
                 entity.disconnect_neighbour(neighbour)

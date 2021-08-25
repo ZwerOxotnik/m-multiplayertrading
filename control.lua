@@ -215,33 +215,33 @@ function Area(position, radius)
 end
 
 local special_builds = {
-	["sell-box"] = function(entity)
+    ["sell-box"] = function(entity)
         entity.operable = false
         sell_boxes[entity.unit_number] = entity
-	end,
-	["buy-box"] = function(entity)
+    end,
+    ["buy-box"] = function(entity)
         entity.operable = false
         sell_boxes[entity.unit_number] = entity
-	end,
-	["credit-mint"] = function(entity)
+    end,
+    ["credit-mint"] = function(entity)
         credit_mints[entity.unit_number] = {
             ['entity'] = entity,
             ['progress'] = 0
         }
-	end,
-	["electric-trading-station"] = function(entity)
+    end,
+    ["electric-trading-station"] = function(entity)
         electric_trading_stations[entity.unit_number] = {
             ['entity'] = entity,
             sell_price = 1,
             buy_bid = 1
         }
-	end,
+    end,
 }
 local function HandleEntityBuild(entity)
     local f = special_builds[entity.name]
-	if f then
-		f(entity)
-	end
+    if f then
+        f(entity)
+    end
 end
 
 local function HandleEntityMined(event)
@@ -609,37 +609,41 @@ script.on_configuration_changed(on_configuration_changed)
 
 
 script.on_event(defines.events.on_built_entity, function(event)
-    local player = game.get_player(event.player_index)
     local entity = event.created_entity
-    local can_build = true
     if IS_LAND_CLAIM then
-        can_build = DestroyInvalidEntities(entity, player)
-		if entity.type == "electric-pole" then
-            local force = player.force
-            DisallowElectricityTheft(entity, force)
-            ClaimPoleBuilt(entity)
-			return
+        local player = game.get_player(event.player_index)
+        local can_build = DestroyInvalidEntities(entity, player)
+        if can_build then
+            if entity.type == "electric-pole" then
+                local force = player.force
+                DisallowElectricityTheft(entity, force)
+                ClaimPoleBuilt(entity)
+                return
+            end
+        else
+            return
         end
     end
-    if can_build then
-		HandleEntityBuild(entity)
-    end
+
+    HandleEntityBuild(entity)
 end)
 script.on_event(defines.events.on_robot_built_entity, function(event)
     local entity = event.created_entity
-    local can_build = true
     if IS_LAND_CLAIM then
-        can_build = DestroyInvalidEntities(entity)
-		if entity.type == "electric-pole" then
-			local force = event.robot.force
-			DisallowElectricityTheft(entity, force)
-			ClaimPoleBuilt(entity)
-			return
-		end
+        local can_build = DestroyInvalidEntities(entity)
+        if can_build then
+            if entity.type == "electric-pole" then
+                local force = event.robot.force
+                DisallowElectricityTheft(entity, force)
+                ClaimPoleBuilt(entity)
+                return
+            end
+        else
+            return
+        end
     end
-    if can_build then
-		HandleEntityBuild(entity)
-    end
+
+    HandleEntityBuild(entity)
 end)
 
 

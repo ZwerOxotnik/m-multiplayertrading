@@ -25,25 +25,34 @@ end
 local function GetClaimCost(entity)
     if entity.type == "electric-pole" then
         local supply_area = entity.prototype.supply_area_distance
-        local cost = supply_area * supply_area * settings.global['land-claim-cost'].value -- TODO: optimize
-        return {cost = cost, can_afford = CanTransferCredits(entity, cost)}
+        local cost = supply_area * supply_area * land_claim_cost
+        return cost
     end
-    return {cost = false}
+    return false
+end
+
+local function GetClaimTransferableCost(entity)
+    if entity.type == "electric-pole" then
+        local supply_area = entity.prototype.supply_area_distance
+        local cost = supply_area * supply_area * land_claim_cost
+        return cost, CanTransferCredits(entity, cost)
+    end
+    return false
 end
 
 function ClaimPoleBuilt(entity)
-    local claim = GetClaimCost(entity)
-    if claim.cost then
+    local cost = GetClaimCost(entity)
+    if cost then
         local credits = global.credits
         local force_name = entity.force.name
-        credits[force_name] = credits[force_name] - claim.cost
+        credits[force_name] = credits[force_name] - cost
     end
 end
 
 function ClaimPoleRemoved(entity)
-    local claim = GetClaimCost(entity)
-    if claim.cost then
-        AddCredits(entity.force, claim.cost)
+    local cost = GetClaimCost(entity)
+    if cost then
+        AddCredits(entity.force, cost)
     end
 end
 
@@ -52,13 +61,13 @@ function DestroyInvalidEntities(entity, player)
     if instigatingForce then
         -- Check if land is claimed.
         local claimedLand = GetClaimedLand(entity)
-        local claimCost = GetClaimCost(entity)
+        local cost, is_affordable = GetClaimTransferableCost(entity)
         local noBuildDueToEnemyLand = (claimedLand ~= "no-mans-land"
                                         and claimedLand ~= instigatingForce
                                         and not claimedLand.get_friend(instigatingForce)
                                         and not PLACE_ENEMY_TERRITORY_ITEMS[entity.name])
         local noBuildDueToNoMansLand = (claimedLand == "no-mans-land" and not PLACE_NOMANSLAND_ITEMS[entity.name])
-        local noBuildDueToExpense = (claimCost.cost and not claimCost.can_afford)
+        local noBuildDueToExpense = (cost and not is_affordable)
         if noBuildDueToExpense then
             player.print{"message.cannot-claim"}
         end

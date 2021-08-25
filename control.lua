@@ -28,6 +28,7 @@ local credits
 --#region global settings
 local minting_speed = settings.global['credit-mint-speed'].value
 local starting_credits = settings.global['starting-credits'].value
+land_claim_cost = settings.global['land-claim-cost'].value
 --#endregion
 
 
@@ -517,6 +518,8 @@ local function on_runtime_mod_setting_changed(event)
         minting_speed = settings.global[setting_name].value
     elseif setting_name == "starting-credits" then
         starting_credits = settings.global[setting_name].value
+    elseif setting_name == "land-claim-cost" then
+        land_claim_cost = settings.global[setting_name].value
     end
 end
 
@@ -611,15 +614,15 @@ script.on_event(defines.events.on_built_entity, function(event)
     local can_build = true
     if IS_LAND_CLAIM then
         can_build = DestroyInvalidEntities(entity, player)
-    end
-    if can_build then
-        if entity.type == "electric-pole" then
+		if entity.type == "electric-pole" then
             local force = player.force
             DisallowElectricityTheft(entity, force)
             ClaimPoleBuilt(entity)
-        else
-            HandleEntityBuild(entity)
+			return
         end
+    end
+    if can_build then
+		HandleEntityBuild(entity)
     end
 end)
 script.on_event(defines.events.on_robot_built_entity, function(event)
@@ -627,15 +630,15 @@ script.on_event(defines.events.on_robot_built_entity, function(event)
     local can_build = true
     if IS_LAND_CLAIM then
         can_build = DestroyInvalidEntities(entity)
+		if entity.type == "electric-pole" then
+			local force = event.robot.force
+			DisallowElectricityTheft(entity, force)
+			ClaimPoleBuilt(entity)
+			return
+		end
     end
     if can_build then
-        if entity.type == "electric-pole" then
-            local force = event.robot.force
-            DisallowElectricityTheft(entity, force)
-            ClaimPoleBuilt(entity)
-        else
-            HandleEntityBuild(entity)
-        end
+		HandleEntityBuild(entity)
     end
 end)
 

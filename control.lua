@@ -68,6 +68,30 @@ POLES = {
 }
 
 
+local function clear_invalid_entities()
+    for unit_number, entity in pairs(sell_boxes) do
+        if not entity.valid then
+            sell_boxes[unit_number] = nil
+            orders[unit_number] = nil
+        end
+    end
+    for unit_number, data in pairs(credit_mints) do
+        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
+            credit_mints[unit_number] = nil
+        end
+    end
+    for unit_number, data in pairs(electric_trading_stations) do
+        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
+            electric_trading_stations[unit_number] = nil
+        end
+    end
+    for unit_number, data in pairs(orders) do
+        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
+            orders[unit_number] = nil
+        end
+    end
+end
+
 local function link_data()
     credit_mints = global.credit_mints
     electric_trading_stations = global.electric_trading_stations
@@ -104,27 +128,7 @@ local function CheckGlobalData()
 
     link_data()
 
-    for unit_number, entity in pairs(sell_boxes) do
-        if not entity.valid then
-            sell_boxes[unit_number] = nil
-            orders[unit_number] = nil
-        end
-    end
-    for unit_number, data in pairs(credit_mints) do
-        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
-            credit_mints[unit_number] = nil
-        end
-    end
-    for unit_number, data in pairs(electric_trading_stations) do
-        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
-            electric_trading_stations[unit_number] = nil
-        end
-    end
-    for unit_number, data in pairs(orders) do
-        if not data.entity.valid then -- TODO: check, is data.entity has weird characters?
-            orders[unit_number] = nil
-        end
-    end
+	clear_invalid_entities()
     for player_index, _ in pairs(open_order) do
         if game.get_player(player_index) == nil then
 			open_order[player_index] = nil
@@ -785,6 +789,9 @@ if settings.startup['specializations'].value then
     end)
 end
 
+script.on_event(defines.events.on_surface_deleted, clear_invalid_entities)
+script.on_event(defines.events.on_surface_cleared, clear_invalid_entities)
+script.on_event(defines.events.on_chunk_deleted, clear_invalid_entities)
 script.on_event(defines.events.on_player_removed, on_player_removed)
 script.on_event(defines.events.on_gui_text_changed, GUITextChanged)
 script.on_event(defines.events.on_gui_elem_changed, GUIElemChanged)

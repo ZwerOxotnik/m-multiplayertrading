@@ -559,6 +559,12 @@ local function on_configuration_changed(event)
 
     local version = tonumber(string.gmatch(mod_changes.old_version, "%d+.%d+")())
     if version < 0.9 then
+		for force_name, value in pairs(global.credits) do
+			local force = game.forces[force_name]
+			if game.forces[force_name] then
+				call("EasyAPI", "set_force_money", force, value)
+			end
+		end
         global.credits = nil
         for _, player in pairs(game.players) do
             local credits_element = player.gui.top.credits

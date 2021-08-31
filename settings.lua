@@ -1,10 +1,5 @@
 data:extend({
     {
-        type = "int-setting",
-        name = "starting-credits",
-        setting_type = "runtime-global",
-        default_value = 3000
-    }, {
         type = "bool-setting",
         name = "early-bird-research",
         setting_type = "startup",

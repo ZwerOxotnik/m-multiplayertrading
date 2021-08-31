@@ -2,6 +2,8 @@
     Multiplayer Trading by Luke Perkin.
     Some concepts taken from Teamwork mod (credit to DragoNFly1) and Diplomacy mod (credit to ZwerOxotnik).
 ]]
+-- Modfied by ZwerOxotnik
+
 require "systems/land-claim"
 require "systems/specializations"
 require "systems/electric-trading-station"
@@ -10,6 +12,7 @@ require "systems/electric-trading-station"
 --#region Constants
 local floor = math.floor
 local max = math.max
+local call = remote.call
 local START_ITEMS = {name = "small-electric-pole", count = 10}
 local IS_LAND_CLAIM = settings.startup['land-claim'].value
 ---#endregion
@@ -22,13 +25,11 @@ local sell_boxes
 local orders
 local open_order
 local early_bird_tech
-local credits
 ---#endregion
 
 
 --#region global settings
 local minting_speed = settings.global['credit-mint-speed'].value
-local starting_credits = settings.global['starting-credits'].value
 land_claim_cost = settings.global['land-claim-cost'].value
 --#endregion
 
@@ -99,26 +100,11 @@ local function link_data()
     orders = global.orders
     open_order = global.open_order
     early_bird_tech = global.early_bird_tech
-    credits = global.credits
 end
-
-
-local credits_label = {type = "label", name = "credits", style = "caption_label"}
-local function AddCreditsGUI(player)
-    local gui = player.gui
-    if gui.left['credits'] then
-        gui.left['credits'].destroy()
-    end
-    if not gui.top['credits'] then
-        gui.top.add(credits_label)
-    end
-end
-
 
 local function CheckGlobalData()
     global.sell_boxes = global.sell_boxes or {}
     global.orders = global.orders or {}
-    global.credits = global.credits or {}
     global.credit_mints = global.credit_mints or {}
     global.specializations = global.specializations or {}
     global.output_stat = global.output_stat or {}
@@ -128,16 +114,11 @@ local function CheckGlobalData()
 
     link_data()
 
-	clear_invalid_entities()
+    clear_invalid_entities()
     for player_index, _ in pairs(open_order) do
         if game.get_player(player_index) == nil then
-			open_order[player_index] = nil
-		end
-    end
-    for force_name, _ in pairs(credits) do
-        if game.forces[force_name] == nil then
-			credits[force_name] = nil
-		end
+            open_order[player_index] = nil
+        end
     end
 end
 
@@ -149,9 +130,6 @@ local function on_init()
     for _, player in pairs(game.players) do
         player.insert(START_ITEMS)
     end
-    for _, player in pairs(game.connected_players) do
-        AddCreditsGUI(player)
-    end
 end
 
 local function on_load()
@@ -159,11 +137,7 @@ local function on_load()
 end
 
 function ForceCreated(event)
-    local force = event.force
-    if credits[force.name] == nil then
-        credits[force.name] = starting_credits
-    end
-    for name, technology in pairs(force.technologies) do
+    for name, technology in pairs(event.force.technologies) do
         if string.find(name, "-mpt-") ~= nil then
             technology.enabled = false
         end
@@ -171,7 +145,7 @@ function ForceCreated(event)
 end
 
 local function on_player_removed(event)
-	open_order[event.player_index] = nil
+    open_order[event.player_index] = nil
 end
 
 function ResearchCompleted(event)
@@ -330,15 +304,30 @@ local function check_boxes()
 end
 
 local function check_credit_mints()
+    local forces_money = call("EasyAPI", "get_forces_money")
+    local forces_money_copy = {}
+    for force_index, value in pairs(forces_money) do
+        forces_money_copy[force_index] = value
+    end
+
+    -- TODO: optimize
     for _, credit_mint in pairs(credit_mints) do
         local entity = credit_mint.entity
         local energy = entity.energy / entity.electric_buffer_size
         local progress = credit_mint.progress + (energy * minting_speed)
         if progress >= 0.90 then
             credit_mint.progress = 0
-            AddCredits(entity.force, 10)
+            local force_index = entity.force.index
+            forces_money_copy[force_index] = forces_money_copy[force_index] + 10
         else
             credit_mint.progress = progress
+        end
+    end
+
+    local forces = game.forces
+    for force_index, value in pairs(forces_money_copy) do
+        if forces_money[force_index] ~= value then
+            call("EasyAPI", "set_force_money", forces[force_index], value)
         end
     end
 end
@@ -349,7 +338,7 @@ function CanTransferItemStack(source_inventory, destination_inventory, item_stac
 end
 
 function CanTransferCredits(control, amount)
-    local force_credits = credits[control.force.name]
+    local force_credits = call("EasyAPI", "get_force_money", control.force.index) or 0
     if force_credits >= amount then
         return true
     end
@@ -362,8 +351,7 @@ function TransferCredits(buy_force, sell_force, amount)
 end
 
 function AddCredits(force, amount)
-    local force_name = force.name
-    credits[force_name] = credits[force_name] + amount
+    call("EasyAPI", "deposit_force_money", force, amount)
     force.item_production_statistics.on_flow("coin", amount)
 end
 
@@ -547,35 +535,10 @@ local function on_runtime_mod_setting_changed(event)
     local setting_name = event.setting
     if setting_name == "credit-mint-speed" then
         minting_speed = settings.global[setting_name].value
-    elseif setting_name == "starting-credits" then
-        starting_credits = settings.global[setting_name].value
     elseif setting_name == "land-claim-cost" then
         land_claim_cost = settings.global[setting_name].value
     end
 end
-
--- function GiveCreditsCommand(event)
---     local player = GetEventPlayer(event)
---     if not event.parameter then return end
---     local params = {}
---     for param in string.gmatch(event.parameter, "%g+") do
---         params[#params+1] = param
---     end
---     local other_force_name = params[1]
---     local amount = tonumber(params[2]) or 0
---     if CanTransferCredits(player, amount) then
---         TransferCredits(player.force, {name = other_force_name}, amount)
---     else
---         player.print{"message.no-credits"}
---     end
--- end
-
--- function CheatCredits(event)
---     local player = GetEventPlayer(event)
---     if not event.parameter then return end
---     local amount = tonumber(event.parameter) or 0
---     AddCredits(player.force, amount)
--- end
 
 local function on_configuration_changed(event)
     CheckGlobalData()
@@ -583,7 +546,7 @@ local function on_configuration_changed(event)
     local specializations = global.specializations
     for force_name, force in pairs(game.forces) do
         local recipes = force.recipes
-        for spec_name, _force_name in pairs(specializations)  do
+        for spec_name, _force_name in pairs(specializations) do
             if _force_name == force_name then
                 recipes[spec_name].enabled = true
             end
@@ -594,11 +557,16 @@ local function on_configuration_changed(event)
     local mod_changes = event.mod_changes["m-multiplayertrading"]
     if not (mod_changes and mod_changes.old_version) then return end
 
-    for _, player in pairs(game.connected_players) do
-        AddCreditsGUI(player)
-    end
-
     local version = tonumber(string.gmatch(mod_changes.old_version, "%d+.%d+")())
+    if version < 0.9 then
+        global.credits = nil
+        for _, player in pairs(game.players) do
+            local credits_element = player.gui.top.credits
+            if credits_element then
+                credits_element.destroy()
+            end
+        end
+    end
     if version < 0.8 then
         for _unit_number, data in pairs(electric_trading_stations) do
             local unit_number = data.entity.unit_number
@@ -740,25 +708,6 @@ do
     end)
 end
 
-do
-    local function on_player_joined(event)
-        AddCreditsGUI(game.get_player(event.player_index))
-    end
-    script.on_event(defines.events.on_player_joined_game, function(event)
-        pcall(on_player_joined, event)
-    end)
-end
-
-do
-    local function on_player_left_game(event)
-        game.get_player(event.player_index).gui.left.credits.destroy()
-    end
-    script.on_event(defines.events.on_player_left_game, function(event)
-        pcall(on_player_left_game, event)
-    end)
-end
-
-
 script.on_event("sellbox-gui-open", function(event)
     local player = game.get_player(event.player_index)
     if not (player and player.valid) then return end
@@ -801,16 +750,8 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_se
 if settings.startup['early-bird-research'].value then
     script.on_event(defines.events.on_research_finished, ResearchCompleted)
 end
--- commands.add_command("give-credits", {"command-help.give-credits"}, GiveCreditsCommand) -- TOO BUGGY
 
-remote.add_interface("multiplayer-trading", {
-    ["add-money"] = function(force, amount)
-        AddCredits(force, amount)
-    end,
-    ["get-money"] = function(force)
-        return credits[force.name]
-    end
-})
+remote.add_interface("multiplayer-trading", {})
 
 script.on_nth_tick(60, function()
     UpdateElectricTradingStations(electric_trading_stations)
@@ -818,13 +759,6 @@ end)
 
 script.on_nth_tick(15, check_boxes)
 script.on_nth_tick(900, check_credit_mints)
-
--- TODO: optimize
-script.on_nth_tick(120, function()
-    for _, player in pairs(game.connected_players) do
-        player.gui.top['credits'].caption = floor(credits[player.force.name]) .. '$'
-    end
-end)
 
 if settings.startup['specializations'].value == true then
     script.on_nth_tick(3600, UpdateSpecializations)

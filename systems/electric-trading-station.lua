@@ -86,30 +86,28 @@ local function BalanceEnergy(source, destination)
     end
 end
 
-do
-    function UpdateElectricTradingStations(stations)
-        for _, electric_trading_station in pairs(stations) do
-            local source = electric_trading_station.entity
-            local adjacent = source.surface.find_entities_filtered{
-                area = Area(source.position, 3),
-                name = "electric-trading-station"
-            }
-            local highest_bidder = nil
-            local highest_bid = 0
-            for _, dest in pairs(adjacent) do
-                if dest.force ~= source.force then
-                    local dest_bid = stations[dest.unit_number].buy_bid
-                    if dest_bid > highest_bid then
-                        if not (dest.energy >= 6000000) then
-                            highest_bid = dest_bid
-                            highest_bidder = dest
-                        end
+function UpdateElectricTradingStations(stations)
+    for _, electric_trading_station in pairs(stations) do
+        local source = electric_trading_station.entity
+        local adjacent = source.surface.find_entities_filtered{
+            area = Area(source.position, 3),
+            name = "electric-trading-station"
+        }
+        local highest_bidder = nil
+        local highest_bid = 0
+        for _, dest in pairs(adjacent) do
+            if dest.force ~= source.force then
+                local dest_bid = stations[dest.unit_number].buy_bid
+                if dest_bid > highest_bid then
+                    if not (dest.energy >= 6000000) then
+                        highest_bid = dest_bid
+                        highest_bidder = dest
                     end
                 end
             end
-            if highest_bidder then
-                BalanceEnergy(source, highest_bidder)
-            end
+        end
+        if highest_bidder then
+            BalanceEnergy(source, highest_bidder)
         end
     end
 end

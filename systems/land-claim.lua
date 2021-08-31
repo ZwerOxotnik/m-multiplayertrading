@@ -1,3 +1,5 @@
+local call = remote.call
+
 local function GetClaimedLand(entity)
     local entity_prototypes = game.entity_prototypes
     for _, poleName in pairs(POLES) do
@@ -43,9 +45,7 @@ end
 function ClaimPoleBuilt(entity)
     local cost = GetClaimCost(entity)
     if cost then
-        local credits = global.credits
-        local force_name = entity.force.name
-        credits[force_name] = credits[force_name] - cost
+        call("EasyAPI", "deposit_force_money", entity.force, -cost)
     end
 end
 

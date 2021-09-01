@@ -315,10 +315,10 @@ local function check_credit_mints()
         local entity = credit_mint.entity
         local energy = entity.energy / entity.electric_buffer_size
         local progress = credit_mint.progress + (energy * minting_speed)
-        if progress >= 0.90 then
+        if progress >= 0.10 then
             credit_mint.progress = 0
             local force_index = entity.force.index
-            forces_money_copy[force_index] = forces_money_copy[force_index] + 10
+            forces_money_copy[force_index] = forces_money_copy[force_index] + 1
         else
             credit_mint.progress = progress
         end

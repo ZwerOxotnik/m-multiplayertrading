@@ -30,6 +30,7 @@ local early_bird_tech
 
 --#region global settings
 local minting_speed = settings.global['credit-mint-speed'].value
+local mint_money_per_cycle = settings.global['mint-money-per-cycle'].value
 land_claim_cost = settings.global['land-claim-cost'].value
 --#endregion
 
@@ -318,7 +319,7 @@ local function check_credit_mints()
         if progress >= 0.10 then
             credit_mint.progress = 0
             local force_index = entity.force.index
-            forces_money_copy[force_index] = forces_money_copy[force_index] + 1
+            forces_money_copy[force_index] = forces_money_copy[force_index] + mint_money_per_cycle
         else
             credit_mint.progress = progress
         end
@@ -529,15 +530,22 @@ function GUIClick(event)
     end
 end
 
+local SETTINS = {
+	["mint-money-per-cycle"] = function(value)
+		mint_money_per_cycle = value
+	end,
+	["credit-mint-speed"] = function(value)
+		minting_speed = value
+	end,
+	["land-claim-cost"] = function(value)
+		land_claim_cost = value
+	end,
+}
 local function on_runtime_mod_setting_changed(event)
     if event.setting_type ~= "runtime-global" then return end
 
-    local setting_name = event.setting
-    if setting_name == "credit-mint-speed" then
-        minting_speed = settings.global[setting_name].value
-    elseif setting_name == "land-claim-cost" then
-        land_claim_cost = settings.global[setting_name].value
-    end
+    local f = SETTINS[event.setting]
+	if f then f(settings.global[event.setting].value) end
 end
 
 local function on_configuration_changed(event)

@@ -30,6 +30,13 @@ data:extend({
         setting_type = "runtime-global",
         default_value = 0.01
     }, {
+        type = "int-setting",
+        name = "mint-money-per-cycle",
+        setting_type = "runtime-global",
+        default_value = 2,
+		minimum_value = 1,
+		maximum_value = 1e5
+    }, {
         type = "string-setting",
         name = "credit-mint-energy-usage",
         setting_type = "startup",

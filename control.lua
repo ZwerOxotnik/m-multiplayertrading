@@ -531,21 +531,21 @@ function GUIClick(event)
 end
 
 local SETTINS = {
-	["mint-money-per-cycle"] = function(value)
-		mint_money_per_cycle = value
-	end,
-	["credit-mint-speed"] = function(value)
-		minting_speed = value
-	end,
-	["land-claim-cost"] = function(value)
-		land_claim_cost = value
-	end,
+    ["mint-money-per-cycle"] = function(value)
+        mint_money_per_cycle = value
+    end,
+    ["credit-mint-speed"] = function(value)
+        minting_speed = value
+    end,
+    ["land-claim-cost"] = function(value)
+        land_claim_cost = value
+    end,
 }
 local function on_runtime_mod_setting_changed(event)
     if event.setting_type ~= "runtime-global" then return end
 
     local f = SETTINS[event.setting]
-	if f then f(settings.global[event.setting].value) end
+    if f then f(settings.global[event.setting].value) end
 end
 
 local function on_configuration_changed(event)
@@ -567,12 +567,12 @@ local function on_configuration_changed(event)
 
     local version = tonumber(string.gmatch(mod_changes.old_version, "%d+.%d+")())
     if version < 0.9 then
-		for force_name, value in pairs(global.credits) do
-			local force = game.forces[force_name]
-			if game.forces[force_name] then
-				call("EasyAPI", "set_force_money", force, value)
-			end
-		end
+        for force_name, value in pairs(global.credits) do
+            local force = game.forces[force_name]
+            if game.forces[force_name] then
+                call("EasyAPI", "set_force_money", force, value)
+            end
+        end
         global.credits = nil
         for _, player in pairs(game.players) do
             local credits_element = player.gui.top.credits
@@ -632,13 +632,17 @@ script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_built_entity, function(event)
     local entity = event.created_entity
     if IS_LAND_CLAIM then
+        local is_electric_pole = false
+        if entity.type == "electric-pole" then
+            is_electric_pole = true
+            ClaimPoleBuilt(entity)
+        end
         local player = game.get_player(event.player_index)
         local can_build = DestroyInvalidEntities(entity, player)
         if can_build then
-            if entity.type == "electric-pole" then
+            if is_electric_pole then
                 local force = player.force
                 DisallowElectricityTheft(entity, force)
-                ClaimPoleBuilt(entity)
                 return
             end
         else
@@ -651,14 +655,18 @@ end)
 script.on_event(defines.events.on_robot_built_entity, function(event)
     local entity = event.created_entity
     if IS_LAND_CLAIM then
+        local is_electric_pole = false
+        if entity.type == "electric-pole" then
+            is_electric_pole = true
+            ClaimPoleBuilt(entity)
+        end
         local can_build = DestroyInvalidEntities(entity)
         if can_build then
-            if entity.type == "electric-pole" then
+            if is_electric_pole then
                 local force = event.robot.force
                 DisallowElectricityTheft(entity, force)
-                ClaimPoleBuilt(entity)
-                return
             end
+            return
         else
             return
         end

@@ -150,7 +150,7 @@ local function on_player_removed(event)
     open_order[event.player_index] = nil
 end
 
-local function on_force_reset(event)
+local function fix_force_recipes(event)
   local force = event.force
   local recipes = force.recipes
   local force_name = force.name
@@ -757,7 +757,10 @@ script.on_event(defines.events.on_surface_cleared, clear_invalid_entities)
 script.on_event(defines.events.on_chunk_deleted, clear_invalid_entities)
 script.on_event(defines.events.on_player_removed, on_player_removed)
 script.on_event(defines.events.on_force_reset, function(event)
-    pcall(on_force_reset, event)
+    pcall(fix_force_recipes, event)
+end)
+script.on_event(defines.events.on_technology_effects_reset, function(event)
+    pcall(fix_force_recipes, event)
 end)
 script.on_event(defines.events.on_gui_text_changed, function(event)
     pcall(on_gui_text_changed, event)

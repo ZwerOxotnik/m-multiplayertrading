@@ -10,7 +10,6 @@ require "systems/electric-trading-station"
 
 
 --#region Constants
-local floor = math.floor
 local max = math.max
 local call = remote.call
 local START_ITEMS = {name = "small-electric-pole", count = 10}
@@ -25,6 +24,7 @@ local sell_boxes
 local orders
 local open_order
 local early_bird_tech
+local specializations
 ---#endregion
 
 
@@ -101,6 +101,7 @@ local function link_data()
     orders = global.orders
     open_order = global.open_order
     early_bird_tech = global.early_bird_tech
+    specializations = global.specializations
 end
 
 local function CheckGlobalData()
@@ -123,10 +124,18 @@ local function CheckGlobalData()
     end
 end
 
+local function on_force_created(event)
+    for name, technology in pairs(event.force.technologies) do
+        if string.find(name, "-mpt-") ~= nil then
+            technology.enabled = false
+        end
+    end
+end
+
 local function on_init()
     CheckGlobalData()
     for _, force in pairs(game.forces) do
-        ForceCreated({force=force})
+        on_force_created({force=force})
     end
     for _, player in pairs(game.players) do
         player.insert(START_ITEMS)
@@ -137,19 +146,22 @@ local function on_load()
     link_data()
 end
 
-function ForceCreated(event)
-    for name, technology in pairs(event.force.technologies) do
-        if string.find(name, "-mpt-") ~= nil then
-            technology.enabled = false
-        end
-    end
-end
-
 local function on_player_removed(event)
     open_order[event.player_index] = nil
 end
 
-function ResearchCompleted(event)
+local function on_force_reset(event)
+  local force = event.force
+  local recipes = force.recipes
+  local force_name = force.name
+  for spec_name, _force_name in pairs(specializations)  do
+    if _force_name == force_name then
+      recipes[spec_name].enabled = true
+    end
+  end
+end
+
+local function on_research_finished(event)
     local research = event.research
     local tech_cost_multiplier = settings.startup['early-bird-multiplier'].value
     local base_tech_name = string.gsub(research.name, "%-mpt%-[0-9]+", "")
@@ -188,24 +200,6 @@ function ResearchCompleted(event)
                 tech.enabled = false
             end
         end
-    end
-end
-
-function GetEventPlayer(event)
-    if event.player_index then
-        return game.get_player(event.player_index)
-    else
-        return nil
-    end
-end
-
-function GetEventForce(event)
-    if event.player_index then
-        return game.get_player(event.player_index).force
-    elseif event.robot then
-        return event.robot.force
-    else
-        return nil
     end
 end
 
@@ -453,7 +447,7 @@ function SellboxGUIOpen(player, entity)
 end
 
 function SellOrBuyGUIClose(event)
-    local player = GetEventPlayer(event)
+    local player = game.get_player(event.player_index)
     local gui = player.gui.center
     if gui['sell-box-gui'] then
         open_order[player.index] = nil
@@ -465,8 +459,8 @@ function SellOrBuyGUIClose(event)
     end
 end
 
-function GUITextChanged(event)
-    local player = GetEventPlayer(event)
+local function on_gui_text_changed(event)
+    local player = game.get_player(event.player_index)
     local element = event.element
     if element.parent.name == "ets-gui" then -- TODO: check
         ElectricTradingStationTextChanged(event)
@@ -480,9 +474,8 @@ function GUITextChanged(event)
     end
 end
 
-function GUIElemChanged(event)
+local function on_gui_elem_changed(event)
     local player = game.get_player(event.player_index)
-    if not (player and player.valid) then return end
 
     local element = event.element
     local element_name = element.name
@@ -493,8 +486,8 @@ function GUIElemChanged(event)
     end
 end
 
-function GUIClick(event)
-    local player = GetEventPlayer(event)
+local function on_gui_click(event)
+    local player = game.get_player(event.player_index)
     local element = event.element
     local order = open_order[player.index]
     if order == nil then return end
@@ -551,7 +544,6 @@ end
 local function on_configuration_changed(event)
     CheckGlobalData()
 
-    local specializations = global.specializations
     for force_name, force in pairs(game.forces) do
         local recipes = force.recipes
         for spec_name, _force_name in pairs(specializations) do
@@ -566,35 +558,7 @@ local function on_configuration_changed(event)
     if not (mod_changes and mod_changes.old_version) then return end
 
     local version = tonumber(string.gmatch(mod_changes.old_version, "%d+.%d+")())
-    if version < 0.9 then
-        for force_name, value in pairs(global.credits) do
-            local force = game.forces[force_name]
-            if game.forces[force_name] then
-                call("EasyAPI", "set_force_money", force, value)
-            end
-        end
-        global.credits = nil
-        for _, player in pairs(game.players) do
-            local credits_element = player.gui.top.credits
-            if credits_element then
-                credits_element.destroy()
-            end
-        end
-    end
-    if version < 0.8 then
-        for _unit_number, data in pairs(electric_trading_stations) do
-            local unit_number = data.entity.unit_number
-            if _unit_number ~= unit_number then -- TODO: check, is data.entity has weird characters?
-                electric_trading_stations[unit_number] = {
-                    ['entity'] = electric_trading_stations[_unit_number].entity,
-                    sell_price = electric_trading_stations[_unit_number].sell_price,
-                    buy_bid = electric_trading_stations[_unit_number].buy_bid
-                }
-                electric_trading_stations[_unit_number] = nil
-            end
-        end
-    end
-    if version < 0.7 then
+  if version < 0.7 then
         -- Check unit numbers
         for _unit_number, entity in pairs(sell_boxes) do
             local unit_number = entity.unit_number
@@ -618,6 +582,34 @@ local function on_configuration_changed(event)
                     ['progress'] = credit_mints[_unit_number].progress
                 }
                 credit_mints[_unit_number] = nil
+            end
+        end
+    end
+  if version < 0.8 then
+        for _unit_number, data in pairs(electric_trading_stations) do
+            local unit_number = data.entity.unit_number
+            if _unit_number ~= unit_number then -- TODO: check, is data.entity has weird characters?
+                electric_trading_stations[unit_number] = {
+                    ['entity'] = electric_trading_stations[_unit_number].entity,
+                    sell_price = electric_trading_stations[_unit_number].sell_price,
+                    buy_bid = electric_trading_stations[_unit_number].buy_bid
+                }
+                electric_trading_stations[_unit_number] = nil
+            end
+        end
+    end
+    if version < 0.9 then
+        for force_name, value in pairs(global.credits) do
+            local force = game.forces[force_name]
+            if game.forces[force_name] then
+                call("EasyAPI", "set_force_money", force, value)
+            end
+        end
+        global.credits = nil
+        for _, player in pairs(game.players) do
+            local credits_element = player.gui.top.credits
+            if credits_element then
+                credits_element.destroy()
             end
         end
     end
@@ -764,13 +756,22 @@ script.on_event(defines.events.on_surface_deleted, clear_invalid_entities)
 script.on_event(defines.events.on_surface_cleared, clear_invalid_entities)
 script.on_event(defines.events.on_chunk_deleted, clear_invalid_entities)
 script.on_event(defines.events.on_player_removed, on_player_removed)
-script.on_event(defines.events.on_gui_text_changed, GUITextChanged)
-script.on_event(defines.events.on_gui_elem_changed, GUIElemChanged)
-script.on_event(defines.events.on_gui_click, GUIClick)
-script.on_event(defines.events.on_force_created, ForceCreated)
+script.on_event(defines.events.on_force_reset, function(event)
+    pcall(on_force_reset, event)
+end)
+script.on_event(defines.events.on_gui_text_changed, function(event)
+    pcall(on_gui_text_changed, event)
+end)
+script.on_event(defines.events.on_gui_elem_changed, function(event)
+    pcall(on_gui_elem_changed, event)
+end)
+script.on_event(defines.events.on_gui_click, function(event)
+    pcall(on_gui_click, event)
+end)
+script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 if settings.startup['early-bird-research'].value then
-    script.on_event(defines.events.on_research_finished, ResearchCompleted)
+    script.on_event(defines.events.on_research_finished, on_research_finished)
 end
 
 remote.add_interface("multiplayer-trading", {})

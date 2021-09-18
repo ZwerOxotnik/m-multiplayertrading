@@ -123,7 +123,7 @@ function DisallowElectricityTheft(entity, instigatingForce)
 end
 
 function ElectricTradingStationGUIOpen(event)
-    local player = GetEventPlayer(event)
+    local player = game.get_player(event.player_index)
     if player.gui.center['ets-gui'] then return end
     local entity = player.selected
     local frame = player.gui.center.add{type = "frame", direction = "vertical", name = "ets-gui", caption = "Electric Trading Station"}
@@ -150,7 +150,7 @@ function ElectricTradingStationGUIOpen(event)
 end
 
 function ElectricTradingStationGUIClose(event)
-    local player = GetEventPlayer(event)
+    local player = game.get_player(event.player_index)
     local ets_gui = player.gui.center['ets-gui']
     if ets_gui then
         ets_gui.destroy()
@@ -158,7 +158,7 @@ function ElectricTradingStationGUIClose(event)
 end
 
 function ElectricTradingStationTextChanged(event)
-    local player = GetEventPlayer(event)
+    local player = game.get_player(event.player_index)
     local ets_unit_number = global.open_electric_trading_station[player.index]
     if ets_unit_number == nil then return end
     local textfield = event.element

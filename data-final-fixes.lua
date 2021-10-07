@@ -28,7 +28,7 @@ end
 
 -- This is kinda a dirty way to fix bugs
 local allow_early_bird_research = true
-if mods["space-exploration"] or mods["Krastorio2"] then
+if mods["space-exploration"] or mods["Krastorio2"] or mods["angelsrefining"] or mods["bobplates"] then
     allow_early_bird_research = false
 end
 

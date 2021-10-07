@@ -1,5 +1,6 @@
 local call = remote.call
 
+---@return LuaForce?
 local function GetClaimedLand(entity)
     local entity_prototypes = game.entity_prototypes
     for _, poleName in pairs(POLES) do
@@ -21,16 +22,12 @@ local function GetClaimedLand(entity)
             return claimPoles[1].force
         end
     end
-    return "no-mans-land"
 end
 
 local function GetClaimCost(entity)
-    if entity.type == "electric-pole" then
-        local supply_area = entity.prototype.supply_area_distance
-        local cost = supply_area * supply_area * land_claim_cost
-        return cost
-    end
-    return false
+    local supply_area = entity.prototype.supply_area_distance
+    local cost = supply_area * supply_area * land_claim_cost
+    return cost
 end
 
 local function GetClaimTransferableCost(entity)
@@ -62,11 +59,12 @@ function DestroyInvalidEntities(entity, player)
         -- Check if land is claimed.
         local claimedLand = GetClaimedLand(entity)
         local cost, is_affordable = GetClaimTransferableCost(entity)
-        local noBuildDueToEnemyLand = (claimedLand ~= "no-mans-land"
-                                        and claimedLand ~= instigatingForce
-                                        and not claimedLand.get_friend(instigatingForce)
-                                        and not PLACE_ENEMY_TERRITORY_ITEMS[entity.name])
-        local noBuildDueToNoMansLand = (claimedLand == "no-mans-land" and not PLACE_NOMANSLAND_ITEMS[entity.name])
+        local noBuildDueToEnemyLand = (
+            claimedLand and claimedLand ~= instigatingForce
+            and not claimedLand.get_friend(instigatingForce)
+            and not PLACE_ENEMY_TERRITORY_ITEMS[entity.name]
+        )
+        local noBuildDueToNoMansLand = (claimedLand == nil and not PLACE_NOMANSLAND_ITEMS[entity.name])
         local noBuildDueToExpense = (cost and not is_affordable)
         if noBuildDueToExpense then
             player.print{"message.cannot-claim"}

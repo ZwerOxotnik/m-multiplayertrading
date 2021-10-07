@@ -633,8 +633,7 @@ script.on_event(defines.events.on_built_entity, function(event)
         local can_build = DestroyInvalidEntities(entity, player)
         if can_build then
             if is_electric_pole then
-                local force = player.force
-                DisallowElectricityTheft(entity, force)
+                DisallowElectricityTheft(entity, player.force)
                 return
             end
         else
@@ -655,8 +654,7 @@ script.on_event(defines.events.on_robot_built_entity, function(event)
         local can_build = DestroyInvalidEntities(entity)
         if can_build then
             if is_electric_pole then
-                local force = event.robot.force
-                DisallowElectricityTheft(entity, force)
+                DisallowElectricityTheft(entity, event.robot.force)
             end
             return
         else

@@ -11,9 +11,10 @@ local function copy(thing)
 end
 
 if settings.startup['land-claim'].value then
+    local electric_poles = data.raw['electric-pole']
     local poles = {"small-electric-pole", "medium-electric-pole", "big-electric-pole", "substation"}
     for _, pole_name in ipairs(poles) do
-        local prototype = data.raw['electric-pole'][pole_name]
+        local prototype = electric_poles[pole_name]
         if prototype then
             if prototype.supply_area_distance < 20 then
                 prototype.supply_area_distance = prototype.supply_area_distance * 2
@@ -25,7 +26,13 @@ if settings.startup['land-claim'].value then
     end
 end
 
-if settings.startup['early-bird-research'].value then
+-- This is kinda a dirty way to fix bugs
+local allow_early_bird_research = true
+if mods["space-exploration"] or mods["Krastorio2"] then
+    allow_early_bird_research = false
+end
+
+if allow_early_bird_research and settings.startup['early-bird-research'].value then
     -- Find non-upgrade tech where no other tech uses it as a prerequisite.
     local function is_tech_valid_for_early_bird( tech )
         for _, other_technology in pairs(data.raw.technology) do

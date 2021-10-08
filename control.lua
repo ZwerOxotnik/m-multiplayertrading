@@ -117,7 +117,7 @@ local function CheckGlobalData()
     link_data()
 
     clear_invalid_entities()
-    for player_index, _ in pairs(open_order) do
+    for player_index in pairs(open_order) do
         if game.get_player(player_index) == nil then
             open_order[player_index] = nil
         end
@@ -286,10 +286,13 @@ local function check_boxes()
                         area = Area(sell_box.position, 3),
                         name = "buy-box"
                     }
-                    for _, buy_box in pairs(buy_boxes) do -- it seems overcomplex
-                        local buy_order = orders[buy_box.unit_number]
-                        if buy_box.force ~= sell_box.force and buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
-                            Transaction(sell_box, buy_box, buy_order, 1)
+                    for i = 1, #buy_boxes do -- it seems overcomplex
+						local buy_box = buy_boxes[i]
+                        if buy_box.force ~= sell_box.force then
+							local buy_order = orders[buy_box.unit_number]
+							if buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
+                            	Transaction(sell_box, buy_box, buy_order, 1)
+							end
                         end
                     end
                 end

@@ -1,25 +1,41 @@
 local call = remote.call
+local Area = Area
+local RAISE_DESTROY = {raise_destroy = true}
 
 ---@return LuaForce?
 local function GetClaimedLand(entity)
     local entity_prototypes = game.entity_prototypes
-    for _, poleName in pairs(POLES) do
+    local find_entities_filtered = entity.surface.find_entities_filtered
+    local is_electric_pole = false
+    local supply_area_distance
+    if entity.type == "electric-pole" then
+        is_electric_pole = true
+        supply_area_distance = entity.prototype.supply_area_distance
+    end
+    local filter = {
+        area = 0,
+        name = ""
+    }
+    for i=1, #POLES do
+        local poleName = POLES[i]
         local prototype = entity_prototypes[poleName]
-        local radius = prototype.supply_area_distance
-        if entity.type == "electric-pole" then
-            radius = radius + entity.prototype.supply_area_distance
+        local radius
+        if is_electric_pole then
+            radius = prototype.supply_area_distance + supply_area_distance
+        else
+            radius = prototype.supply_area_distance
         end
-        local claimPoles = entity.surface.find_entities_filtered{
-            area = Area(entity.position, radius),
-            name = poleName
-        }
-        for _, pole in pairs(claimPoles) do
-            if pole.force ~= entity.force then
-                return pole.force
+        filter.area = Area(entity.position, radius)
+        filter.name = poleName
+        local near_poles = find_entities_filtered(filter)
+        if #near_poles > 0 then
+            for j=1, #near_poles do
+                local pole_force = near_poles[j].force
+                if pole_force ~= entity.force then
+                    return pole_force
+                end
             end
-        end
-        if #claimPoles > 0 then
-            return claimPoles[1].force
+            return entity.force
         end
     end
 end
@@ -53,7 +69,10 @@ function ClaimPoleRemoved(entity)
     end
 end
 
-function DestroyInvalidEntities(entity, player)
+---@param entity LuaEntity
+---@param player? LuaPlayer
+---@return boolean
+function DestroyInvalidEntities(entity, player) -- TODO: refactor
     local instigatingForce = entity.force
     if instigatingForce then
         -- Check if land is claimed.
@@ -82,7 +101,7 @@ function DestroyInvalidEntities(entity, player)
             if player then
                 player.mine_entity(entity, true)
             else
-                entity.destroy()
+                entity.destroy(RAISE_DESTROY)
             end
             return false
         end

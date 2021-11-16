@@ -1,3 +1,6 @@
+local tostring = tostring
+local tonumber = tonumber
+local Area = Area
 local max = math.max
 local floor = math.floor
 local abs = math.abs
@@ -87,16 +90,20 @@ local function BalanceEnergy(source, destination)
 end
 
 function UpdateElectricTradingStations(stations)
+    local filter = {
+        area = 0,
+        name = "electric-trading-station"
+    }
     for _, electric_trading_station in pairs(stations) do
         local source = electric_trading_station.entity
-        local adjacent = source.surface.find_entities_filtered{
-            area = Area(source.position, 3),
-            name = "electric-trading-station"
-        }
+        filter.area = Area(source.position, 3)
+        local adjacent = source.surface.find_entities_filtered(filter)
         local highest_bidder = nil
         local highest_bid = 0
-        for _, dest in pairs(adjacent) do
+        for i=1, #adjacent do
+			local dest = adjacent[i]
             if dest.force ~= source.force then
+				-- TODO: recheck
                 local dest_bid = stations[dest.unit_number].buy_bid
                 if dest_bid > highest_bid then
                     if not (dest.energy >= 6000000) then
@@ -113,10 +120,11 @@ function UpdateElectricTradingStations(stations)
 end
 
 function DisallowElectricityTheft(entity, instigatingForce)
+    local disconnect_neighbour = entity.disconnect_neighbour
     if instigatingForce then
         for _, neighbour in pairs(entity.neighbours["copper"]) do
             if instigatingForce ~= neighbour.force and not instigatingForce.get_friend(neighbour.force) then
-                entity.disconnect_neighbour(neighbour)
+                disconnect_neighbour(neighbour)
             end
         end
     end

@@ -211,6 +211,7 @@ function Area(position, radius)
         {x + radius, y + radius}
     }
 end
+local Area = Area
 
 local special_builds = {
     ["sell-box"] = function(entity)
@@ -287,12 +288,12 @@ local function check_boxes()
                         name = "buy-box"
                     }
                     for i = 1, #buy_boxes do -- it seems overcomplex
-						local buy_box = buy_boxes[i]
+                        local buy_box = buy_boxes[i]
                         if buy_box.force ~= sell_box.force then
-							local buy_order = orders[buy_box.unit_number]
-							if buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
-                            	Transaction(sell_box, buy_box, buy_order, 1)
-							end
+                            local buy_order = orders[buy_box.unit_number]
+                            if buy_order and buy_order.name == sell_order_name and buy_order.value >= sell_order.value then
+                                Transaction(sell_box, buy_box, buy_order, 1)
+                            end
                         end
                     end
                 end
@@ -626,16 +627,16 @@ script.on_configuration_changed(on_configuration_changed)
 
 script.on_event(defines.events.on_built_entity, function(event)
     local entity = event.created_entity
-    if IS_LAND_CLAIM then
+    if IS_LAND_CLAIM then -- TODO: refactor
         local is_electric_pole = false
         if entity.type == "electric-pole" then
             is_electric_pole = true
-            ClaimPoleBuilt(entity)
         end
         local player = game.get_player(event.player_index)
         local can_build = DestroyInvalidEntities(entity, player)
         if can_build then
             if is_electric_pole then
+				ClaimPoleBuilt(entity)
                 DisallowElectricityTheft(entity, player.force)
                 return
             end
@@ -648,15 +649,15 @@ script.on_event(defines.events.on_built_entity, function(event)
 end)
 script.on_event(defines.events.on_robot_built_entity, function(event)
     local entity = event.created_entity
-    if IS_LAND_CLAIM then
+    if IS_LAND_CLAIM then -- TODO: refactor
         local is_electric_pole = false
         if entity.type == "electric-pole" then
             is_electric_pole = true
-            ClaimPoleBuilt(entity)
         end
         local can_build = DestroyInvalidEntities(entity)
         if can_build then
             if is_electric_pole then
+				ClaimPoleBuilt(entity)
                 DisallowElectricityTheft(entity, event.robot.force)
             end
             return

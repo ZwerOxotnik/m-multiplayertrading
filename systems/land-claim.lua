@@ -66,14 +66,16 @@ function DestroyInvalidEntities(entity, player)
         )
         local noBuildDueToNoMansLand = (claimedLand == nil and not PLACE_NOMANSLAND_ITEMS[entity.name])
         local noBuildDueToExpense = (cost and not is_affordable)
-        if noBuildDueToExpense then
-            player.print{"message.cannot-claim"}
-        end
-        if player and noBuildDueToEnemyLand then
-            player.print{"message.no-build-opponent-land"}
-        end
-        if player and noBuildDueToNoMansLand then
-            player.print{"message.no-mans-land-restriction"}
+        if player then
+            if noBuildDueToExpense then
+                player.print{"message.cannot-claim"}
+            end
+            if noBuildDueToEnemyLand then
+                player.print{"message.no-build-opponent-land"}
+            end
+            if noBuildDueToNoMansLand then
+                player.print{"message.no-mans-land-restriction"}
+            end
         end
         -- Don't allow build if invalid build spot.
         if noBuildDueToEnemyLand or noBuildDueToNoMansLand or noBuildDueToExpense then

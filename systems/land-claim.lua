@@ -102,17 +102,14 @@ function DestroyInvalidEntities(entity, player) -- TODO: refactor!
             if player then
                 player.mine_entity(entity, true)
                 -- dirty fix
-                local money = call("EasyAPI", "get_force_money", instigatingForce.index)
-                if money then
-                    AddCredits(instigatingForce, -cost)
+                if cost then
+                    local money = call("EasyAPI", "get_force_money", instigatingForce.index)
+                    if money then
+                        AddCredits(instigatingForce, -cost)
+                    end
                 end
             else
                 entity.destroy(RAISE_DESTROY)
-                 -- dirty fix
-                local money = call("EasyAPI", "get_force_money", instigatingForce.index)
-                if money then
-                    AddCredits(instigatingForce, -cost)
-                end
             end
             return false
         end

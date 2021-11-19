@@ -4,12 +4,23 @@
 ]]
 -- Modfied by ZwerOxotnik
 
+function Area(position, radius)
+    local x = position.x
+    local y = position.y
+    return {
+        {x - radius, y - radius},
+        {x + radius, y + radius}
+    }
+end
+local Area = Area
+
 require "systems/land-claim"
 require "systems/specializations"
 require "systems/electric-trading-station"
 
 
 --#region Constants
+local tostring = tostring
 local max = math.max
 local call = remote.call
 local START_ITEMS = {name = "small-electric-pole", count = 10}
@@ -203,16 +214,6 @@ local function on_research_finished(event)
     end
 end
 
-function Area(position, radius)
-    local x = position.x
-    local y = position.y
-    return {
-        {x - radius, y - radius},
-        {x + radius, y + radius}
-    }
-end
-local Area = Area
-
 local special_builds = {
     ["sell-box"] = function(entity)
         entity.operable = false
@@ -337,21 +338,21 @@ function CanTransferItemStack(source_inventory, destination_inventory, item_stac
 end
 
 function CanTransferCredits(control, amount)
-    local force_credits = call("EasyAPI", "get_force_money", control.force.index) or 0
-    if force_credits >= amount then
+    local force_credits = call("EasyAPI", "get_force_money", control.force.index)
+    if force_credits and force_credits >= amount then
         return true
     end
     return false
 end
 
+function AddCredits(force, amount)
+	call("EasyAPI", "deposit_force_money", force, amount) -- I don't recommend to change it in some cases, change events.
+	force.item_production_statistics.on_flow("coin", amount) -- TODO: recheck
+end
+
 function TransferCredits(buy_force, sell_force, amount)
     AddCredits(buy_force, -amount)
     AddCredits(sell_force, amount)
-end
-
-function AddCredits(force, amount)
-    call("EasyAPI", "deposit_force_money", force, amount)
-    force.item_production_statistics.on_flow("coin", amount)
 end
 
 ---@return table

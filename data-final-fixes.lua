@@ -34,8 +34,9 @@ end
 
 if allow_early_bird_research and settings.startup['early-bird-research'].value then
     -- Find non-upgrade tech where no other tech uses it as a prerequisite.
+	local technologies = data.raw.technology
     local function is_tech_valid_for_early_bird( tech )
-        for _, other_technology in pairs(data.raw.technology) do
+        for _, other_technology in pairs(technologies) do
             if other_technology.prerequisites then
                 for _, prerequisite in ipairs(other_technology.prerequisites) do
                     if prerequisite == tech.name then
@@ -47,14 +48,14 @@ if allow_early_bird_research and settings.startup['early-bird-research'].value t
         return true
     end
     local valid_tech = {}
-    for tech_name, technology in pairs(data.raw.technology) do
+    for tech_name, technology in pairs(technologies) do
         if not technology.upgrade and technology.unit.count and is_tech_valid_for_early_bird(technology) then
             table.insert(valid_tech, tech_name)
         end
     end
     local earlybird_tech = {}
     for _, tech_name in ipairs(valid_tech) do
-        local technology = data.raw.technology[tech_name]
+        local technology = technologies[tech_name]
         for i=1, 4 do
             local expensive_tech = copy(technology)
             local multiplier = math.pow(settings.startup['early-bird-multiplier'].value, i)

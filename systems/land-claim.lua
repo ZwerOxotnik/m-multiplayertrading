@@ -16,6 +16,7 @@ local function GetClaimedLand(entity)
         area = 0,
         name = ""
     }
+    local entity_force = entity.force
     for i=1, #POLES do
         local poleName = POLES[i]
         local prototype = entity_prototypes[poleName]
@@ -31,11 +32,11 @@ local function GetClaimedLand(entity)
         if #near_poles > 0 then
             for j=1, #near_poles do
                 local pole_force = near_poles[j].force
-                if pole_force ~= entity.force then
+                if pole_force ~= entity_force then
                     return pole_force
                 end
             end
-            return entity.force
+            return entity_force
         end
     end
 end
@@ -72,7 +73,7 @@ end
 ---@param entity LuaEntity
 ---@param player? LuaPlayer
 ---@return boolean
-function DestroyInvalidEntities(entity, player) -- TODO: refactor
+function DestroyInvalidEntities(entity, player) -- TODO: refactor!
     local instigatingForce = entity.force
     if instigatingForce then
         -- Check if land is claimed.
@@ -100,8 +101,18 @@ function DestroyInvalidEntities(entity, player) -- TODO: refactor
         if noBuildDueToEnemyLand or noBuildDueToNoMansLand or noBuildDueToExpense then
             if player then
                 player.mine_entity(entity, true)
+                -- dirty fix
+                local money = call("EasyAPI", "get_force_money", instigatingForce.index)
+                if money then
+                    AddCredits(instigatingForce, -cost)
+                end
             else
                 entity.destroy(RAISE_DESTROY)
+                 -- dirty fix
+                local money = call("EasyAPI", "get_force_money", instigatingForce.index)
+                if money then
+                    AddCredits(instigatingForce, -cost)
+                end
             end
             return false
         end

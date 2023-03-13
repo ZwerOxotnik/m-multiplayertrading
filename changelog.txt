@@ -1,8 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.9.17
+Date: 13. 03. 2023
+  Locale:
+    - Added Turkish translation (contributed by @oncelx on crowdin)
+---------------------------------------------------------------------------------------------------
 Version: 0.9.16
 Date: 19. 02. 2023
   Locale:
-    - Added Ukrainian translation (thanks to @Met_en_Bouldry on crowdin)
+    - Added Ukrainian translation (contributed by @Met_en_Bouldry on crowdin)
 ---------------------------------------------------------------------------------------------------
 Version: 0.9.15
 Date: 19. 11. 2021
@@ -63,7 +68,7 @@ Date: 05. 09. 2021
 Version: 0.9.5
 Date: 05. 09. 2021
   Changes:
-    - Updated Brazilian Portuguese translation (thanks to @BM123499 (Bruno Melo) on crowdin)
+    - Updated Brazilian Portuguese translation (contributed by @BM123499 (Bruno Melo) on crowdin)
   Notes:
     - Translations: https://crowdin.com/project/factorio-mods-localization (thank you for contributions, I really appreciate it)
 ---------------------------------------------------------------------------------------------------
@@ -100,7 +105,7 @@ Date: 31. 08. 2021
 Version: 0.8.8
 Date: 29. 08. 2021
   Changes:
-    - Added Brazilian Portuguese translation (thanks to @BM123499 (Bruno Melo) on crowdin)
+    - Added Brazilian Portuguese translation (contributed by @BM123499 (Bruno Melo) on crowdin)
   Notes:
     - Translations: https://crowdin.com/project/factorio-mods-localization (thank you for contributions, I really appreciate it)
 ---------------------------------------------------------------------------------------------------

@@ -106,24 +106,24 @@ local function clear_invalid_entities()
 end
 
 local function link_data()
-    credit_mints = global.credit_mints
-    electric_trading_stations = global.electric_trading_stations
-    sell_boxes = global.sell_boxes
-    orders = global.orders
-    open_order = global.open_order
-    early_bird_tech = global.early_bird_tech
-    specializations = global.specializations
+    credit_mints = storage.credit_mints
+    electric_trading_stations = storage.electric_trading_stations
+    sell_boxes = storage.sell_boxes
+    orders = storage.orders
+    open_order = storage.open_order
+    early_bird_tech = storage.early_bird_tech
+    specializations = storage.specializations
 end
 
 local function CheckGlobalData()
-    global.sell_boxes = global.sell_boxes or {}
-    global.orders = global.orders or {}
-    global.credit_mints = global.credit_mints or {}
-    global.specializations = global.specializations or {}
-    global.output_stat = global.output_stat or {}
-    global.early_bird_tech = global.early_bird_tech or {}
-    global.open_order = global.open_order or {}
-    global.electric_trading_stations = global.electric_trading_stations or {}
+    storage.sell_boxes = storage.sell_boxes or {}
+    storage.orders = storage.orders or {}
+    storage.credit_mints = storage.credit_mints or {}
+    storage.specializations = storage.specializations or {}
+    storage.output_stat = storage.output_stat or {}
+    storage.early_bird_tech = storage.early_bird_tech or {}
+    storage.open_order = storage.open_order or {}
+    storage.electric_trading_stations = storage.electric_trading_stations or {}
 
     link_data()
 
@@ -347,7 +347,8 @@ end
 
 function AddCredits(force, amount)
 	call("EasyAPI", "deposit_force_money", force, amount) -- I don't recommend to change it in some cases, change events.
-	force.item_production_statistics.on_flow("coin", amount) -- TODO: recheck
+
+	-- force.item_production_statistics.on_flow("coin", amount) -- TODO: recheck
 end
 
 function TransferCredits(buy_force, sell_force, amount)
@@ -511,7 +512,7 @@ local function on_gui_click(event)
     elseif element_name == "sell-button-all" then
         local entity = order.entity
         local max_count = entity.get_item_count(order_name)
-        local count = game.item_prototypes[order_name].stack_size - max_count
+        local count = prototypes.item[order_name].stack_size - max_count
         count = math.min( player.get_item_count(order_name), count )
         result = Transaction(player, entity, order, count)
     end
@@ -604,13 +605,13 @@ local function on_configuration_changed(event)
         end
     end
     if version < 0.9 then
-        for force_name, value in pairs(global.credits) do
+        for force_name, value in pairs(storage.credits) do
             local force = game.forces[force_name]
             if game.forces[force_name] then
                 call("EasyAPI", "set_force_money", force, value)
             end
         end
-        global.credits = nil
+        storage.credits = nil
         for _, player in pairs(game.players) do
             local credits_element = player.gui.top.credits
             if credits_element then
@@ -627,7 +628,7 @@ script.on_configuration_changed(on_configuration_changed)
 
 
 script.on_event(defines.events.on_built_entity, function(event)
-    local entity = event.created_entity
+    local entity = event.entity
     if IS_LAND_CLAIM then -- TODO: refactor
         local is_electric_pole = false
         if entity.type == "electric-pole" then
@@ -649,7 +650,7 @@ script.on_event(defines.events.on_built_entity, function(event)
     HandleEntityBuild(entity)
 end)
 script.on_event(defines.events.on_robot_built_entity, function(event)
-    local entity = event.created_entity
+    local entity = event.entity
     if IS_LAND_CLAIM then -- TODO: refactor
         local is_electric_pole = false
         if entity.type == "electric-pole" then

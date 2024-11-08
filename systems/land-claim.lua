@@ -4,13 +4,13 @@ local RAISE_DESTROY = {raise_destroy = true}
 
 ---@return LuaForce?
 local function GetClaimedLand(entity)
-    local entity_prototypes = game.entity_prototypes
+    local entity_prototypes = prototypes.entity
     local find_entities_filtered = entity.surface.find_entities_filtered
     local is_electric_pole = false
     local supply_area_distance
     if entity.type == "electric-pole" then
         is_electric_pole = true
-        supply_area_distance = entity.prototype.supply_area_distance
+        supply_area_distance = entity.prototype.get_supply_area_distance(entity.quality)
     end
     local filter = {
         area = 0,
@@ -22,9 +22,9 @@ local function GetClaimedLand(entity)
         local prototype = entity_prototypes[poleName]
         local radius
         if is_electric_pole then
-            radius = prototype.supply_area_distance + supply_area_distance
+            radius = prototype.get_supply_area_distance() + supply_area_distance
         else
-            radius = prototype.supply_area_distance
+            radius = prototype.get_supply_area_distance()
         end
         filter.area = Area(entity.position, radius)
         filter.name = poleName
@@ -42,14 +42,14 @@ local function GetClaimedLand(entity)
 end
 
 local function GetClaimCost(entity)
-    local supply_area = entity.prototype.supply_area_distance
+    local supply_area = entity.prototype.get_supply_area_distance(entity.quality)
     local cost = supply_area * supply_area * land_claim_cost
     return cost
 end
 
 local function GetClaimTransferableCost(entity)
     if entity.type == "electric-pole" then
-        local supply_area = entity.prototype.supply_area_distance
+        local supply_area = entity.prototype.get_supply_area_distance(entity.quality)
         local cost = supply_area * supply_area * land_claim_cost
         return cost, CanTransferCredits(entity, cost)
     end

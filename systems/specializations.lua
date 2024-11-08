@@ -3,27 +3,38 @@ local SPECIALIZATIONS = require("specializations-data")
 
 local function GetLastStatForSpecialization(spec, force)
     local id = force.name .. "/" .. spec.name
-    if global.output_stat[id] == nil then
-        global.output_stat[id] = {
-            sum = 0,
-            rate = 0
-        }
-    end
-    return global.output_stat[id]
+	local output_stats = storage.output_stat
+	local output_stat = output_stat[id]
+    if output_stat then
+		return output_stat
+	end
+
+	output_stat = {
+		sum = 0,
+		rate = 0
+	}
+	output_stats[id] = output_stat
+	return output_stat
 end
 
 local function GetCurrentStatSumForSpecialization(spec, force)
     local output_sum = 0
     if spec.requirement.fluid then
-        output_sum = force.fluid_production_statistics.get_input_count(spec.requirement.name)
+		local fluid_production_statistics = force.fluid_production_statistics
+		for _, surface in pairs(game.surfaces) do
+			output_sum = output_sum + fluid_production_statistics(surface).get_input_count(spec.requirement.name)
+		end
     else
-        output_sum = force.item_production_statistics.get_input_count(spec.requirement.name)
+		local get_item_production_statistics = force.get_item_production_statistics
+		for _, surface in pairs(game.surfaces) do
+			output_sum = output_sum + get_item_production_statistics(surface).get_input_count(spec.requirement.name)
+		end
     end
     return output_sum
 end
 
 local function GetSpecializationItemSprite(spec)
-    local sprite = ""
+    local sprite
     if spec.requirement.fluid then
         sprite = "fluid/"..spec.requirement.name
     else
@@ -33,7 +44,7 @@ local function GetSpecializationItemSprite(spec)
 end
 
 local function GetSpecializationItemNameLocale(spec)
-    local locale = ""
+    local locale
     if spec.requirement.fluid then
         locale = "fluid-name." .. spec.requirement.name
     else
@@ -44,8 +55,8 @@ end
 
 -- TODO: optimize
 function UpdateSpecializations()
-    local specializations = global.specializations
-    for player_index, player in pairs(game.players) do -- TODO: change to game.connected_players (don't forget about other events)
+    local specializations = storage.specializations
+    for _, player in pairs(game.players) do -- TODO: change to game.connected_players (don't forget about other events)
         local gui = player.gui.left['specialization-gui']
         if gui then
             gui.destroy()
@@ -82,8 +93,8 @@ function UpdateSpecializations()
     end
 end
 
-local horizontal_flow = {type = "flow"}
-local vertical_flow = {type = "flow", direction = "vertical"}
+local HORIZONTAL_FLOW = {type = "flow"}
+local VERTICAL_FLOW = {type = "flow", direction = "vertical"}
 function SpecializationGUI( player )
     local leftGUI = player.gui.left
     if leftGUI['specialization-gui'] then
@@ -92,10 +103,10 @@ function SpecializationGUI( player )
     end
 
     local frame = leftGUI.add{type = "frame", name = "specialization-gui", caption = "Specializations"}
-    local flow = frame.add(vertical_flow)
-    local specializations = global.specializations
+    local flow = frame.add(VERTICAL_FLOW)
+    local specializations = storage.specializations
     for _, spec in pairs(SPECIALIZATIONS) do
-        local row = flow.add(horizontal_flow)
+        local row = flow.add(HORIZONTAL_FLOW)
         local force_name = specializations[spec.name]
 
         local sprite = GetSpecializationItemSprite(spec)
@@ -105,7 +116,7 @@ function SpecializationGUI( player )
         local style = "bold_label"
         if force_name == nil then
             style = "bold_label"
-            local requirement = row.add(vertical_flow)
+            local requirement = row.add(VERTICAL_FLOW)
             local production = spec.requirement.production
             local caption = "Available (produce " .. tostring(production) .. "/min to unlock)"
             requirement.add{type = "label", caption = caption, style = style}

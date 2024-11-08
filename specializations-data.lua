@@ -99,15 +99,15 @@ return {
         }
     },
     {
-        name = "effectivity-module-specialization",
+        name = "efficiency-module-specialization",
         requirement = {
-            name = "effectivity-module",
+            name = "efficiency-module",
             production = 20
         },
         recipe = {
             ingredients = {{"electronic-circuit", 3}, {"advanced-circuit", 3}},
             energy_required = 13,
-            result = "effectivity-module",
+            result = "efficiency-module",
         }
     },
     {

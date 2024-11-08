@@ -13,7 +13,7 @@ local function BalanceEnergy(source, destination)
     local source_diff = balanced_energy - from_energy
     local dest_diff = balanced_energy - to_energy
 
-    local ets = global.electric_trading_stations
+    local ets = storage.electric_trading_stations
     local source_mod_data = ets[source.unit_number]
     local destination_mod_data = ets[destination.unit_number]
     local source_price = source_mod_data.sell_price
@@ -138,23 +138,23 @@ function ElectricTradingStationGUIOpen(event)
     frame.add{type = "label", caption = "Sell Price per MW"}
     if entity.force == player.force then
         local sell = frame.add{type = "textfield", name = "sell"}
-        sell.text = tostring(global.electric_trading_stations[entity.unit_number].sell_price)
+        sell.text = tostring(storage.electric_trading_stations[entity.unit_number].sell_price)
     else
         local sell = frame.add{type = "label", name = "sell"}
-        sell.caption = tostring(global.electric_trading_stations[entity.unit_number].sell_price)
+        sell.caption = tostring(storage.electric_trading_stations[entity.unit_number].sell_price)
     end
     frame.add{type = "label", caption = "Buy bid per MW"}
     if entity.force == player.force then
         local buy = frame.add{type = "textfield", name = "buy"}
-        buy.text = tostring(global.electric_trading_stations[entity.unit_number].buy_bid)
+        buy.text = tostring(storage.electric_trading_stations[entity.unit_number].buy_bid)
     else
         local buy = frame.add{type = "label", name = "buy"}
-        buy.caption = tostring(global.electric_trading_stations[entity.unit_number].buy_bid)
+        buy.caption = tostring(storage.electric_trading_stations[entity.unit_number].buy_bid)
     end
-    if global.open_electric_trading_station == nil then
-        global.open_electric_trading_station = {}
+    if storage.open_electric_trading_station == nil then
+        storage.open_electric_trading_station = {}
     end
-    global.open_electric_trading_station[player.index] = entity.unit_number
+    storage.open_electric_trading_station[player.index] = entity.unit_number
 end
 
 function ElectricTradingStationGUIClose(event)
@@ -167,13 +167,13 @@ end
 
 function ElectricTradingStationTextChanged(event)
     local player = game.get_player(event.player_index)
-    local ets_unit_number = global.open_electric_trading_station[player.index]
+    local ets_unit_number = storage.open_electric_trading_station[player.index]
     if ets_unit_number == nil then return end
     local textfield = event.element
     if textfield.name == "sell" then
-        global.electric_trading_stations[ets_unit_number].sell_price = max(tonumber(textfield.text) or 1, 1)
+        storage.electric_trading_stations[ets_unit_number].sell_price = max(tonumber(textfield.text) or 1, 1)
     end
     if textfield.name == "buy" then
-        global.electric_trading_stations[ets_unit_number].buy_bid = max(tonumber(textfield.text) or 1, 0)
+        storage.electric_trading_stations[ets_unit_number].buy_bid = max(tonumber(textfield.text) or 1, 0)
     end
 end
